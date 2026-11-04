@@ -1,7 +1,6 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { api, getToken, setToken } from "./api.js";
-
-const AuthContext = createContext(null);
+import { useEffect, useMemo, useState } from "react";
+import { api, getToken, setToken } from "../services/api.js";
+import { AuthContext } from "./authContext.js";
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -37,11 +36,17 @@ export function AuthProvider({ children }) {
       async login(username, password) {
         const data = await api("/api/auth/login", {
           method: "POST",
-          body: JSON.stringify({ username, password }),
+          body: JSON.stringify({
+            username,
+            password,
+          }),
         });
         setToken(data.token);
         setUser(data.user);
         return data.user;
+      },
+      updateUser(nextUser) {
+        setUser(nextUser);
       },
       logout() {
         setToken(null);
@@ -52,10 +57,4 @@ export function AuthProvider({ children }) {
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth outside provider");
-  return ctx;
 }

@@ -10,13 +10,18 @@ export function setToken(token) {
 }
 
 export async function api(path, options = {}) {
-  const headers = { ...(options.headers || {}) };
+  const headers = {
+    ...(options.headers || {}),
+  };
   if (options.body && !(options.body instanceof FormData)) {
     headers["Content-Type"] = "application/json";
   }
   const token = getToken();
   if (token) headers.Authorization = `Bearer ${token}`;
-  const res = await fetch(path, { ...options, headers });
+  const res = await fetch(path, {
+    ...options,
+    headers,
+  });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     const err = new Error(data.message || "Yêu cầu thất bại.");

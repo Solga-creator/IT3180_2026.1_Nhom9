@@ -1,16 +1,17 @@
-# React + Vite
+# BlueMoon frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Frontend JavaScript dùng React, React Router và Vite. Cấu trúc màn hình nằm trong `src/pages`, layout sau đăng nhập trong `src/layouts`, trạng thái đăng nhập trong `src/contexts`, và HTTP client trong `src/services`.
 
-Currently, two official plugins are available:
+## Chạy local
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```powershell
+npm ci
+npm run dev
+```
 
-## React Compiler
+Vite chạy tại `http://localhost:5174`. Cấu hình dev server chuyển tiếp các request `/api` đến `http://127.0.0.1:3001`; cần khởi động backend trước để dùng chức năng đăng nhập và hồ sơ.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Lệnh hữu ích
 
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+- `npm run build` tạo bản build production trong `dist/`.
+- `npm run lint` chạy Oxlint.

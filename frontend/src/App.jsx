@@ -1,27 +1,36 @@
 import { Navigate, Route, Routes } from "react-router-dom";
-import { useAuth } from "./AuthContext.jsx";
+import { useAuth } from "./contexts/useAuth.js";
 import LoginPage from "./pages/LoginPage.jsx";
 import HomePage from "./pages/HomePage.jsx";
 import IssueAccountPage from "./pages/IssueAccountPage.jsx";
-import PlaceholderPage from "./pages/PlaceholderPage.jsx";
-import Shell from "./pages/Shell.jsx";
+import AppLayout from "./layouts/AppLayout.jsx";
+import ProfilePage from "./pages/ProfilePage.jsx";
 
 function GuestOnly({ children }) {
-  const { user, ready } = useAuth();
+  const {
+    user,
+    ready,
+  } = useAuth();
   if (!ready) return <p className="muted">Đang tải…</p>;
   if (user) return <Navigate to="/" replace />;
   return children;
 }
 
 function RequireAuth({ children }) {
-  const { user, ready } = useAuth();
+  const {
+    user,
+    ready,
+  } = useAuth();
   if (!ready) return <p className="muted">Đang tải…</p>;
   if (!user) return <Navigate to="/login" replace />;
   return children;
 }
 
 function RequireAdmin({ children }) {
-  const { user, ready } = useAuth();
+  const {
+    user,
+    ready,
+  } = useAuth();
   if (!ready) return <p className="muted">Đang tải…</p>;
   if (!user) return <Navigate to="/login" replace />;
   if (user.role !== "ADMIN") return <Navigate to="/" replace />;
@@ -42,11 +51,12 @@ export default function App() {
       <Route
         element={
           <RequireAuth>
-            <Shell />
+            <AppLayout />
           </RequireAuth>
         }
       >
         <Route path="/" element={<HomePage />} />
+        <Route path="/profile" element={<ProfilePage />} />
         <Route
           path="/accounts"
           element={
@@ -55,10 +65,6 @@ export default function App() {
             </RequireAdmin>
           }
         />
-        <Route path="/apartments" element={<PlaceholderPage title="Căn hộ" />} />
-        <Route path="/residents" element={<PlaceholderPage title="Nhân khẩu" />} />
-        <Route path="/fees" element={<PlaceholderPage title="Thu phí" />} />
-        <Route path="/reports" element={<PlaceholderPage title="Báo cáo" />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

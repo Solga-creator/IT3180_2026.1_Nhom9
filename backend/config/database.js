@@ -1,5 +1,5 @@
 import mysql from "mysql2/promise";
-import { debug } from "./debug.js";
+import { debug } from "../helpers/debug.js";
 
 export const pool = mysql.createPool({
   host: process.env.DB_HOST || "127.0.0.1",
@@ -17,19 +17,23 @@ export async function migrate() {
       id INT AUTO_INCREMENT PRIMARY KEY,
       username VARCHAR(50) NOT NULL UNIQUE,
       full_name VARCHAR(120) NOT NULL,
+      phone VARCHAR(30) NULL,
       password_hash VARCHAR(255) NOT NULL,
       role ENUM('ADMIN', 'BQT') NOT NULL DEFAULT 'BQT',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
+  const [phoneColumn] = await pool.query(
+    `SELECT COUNT(*) AS n
+     FROM information_schema.columns
+     WHERE table_schema = DATABASE()
+       AND table_name = 'users'
+       AND column_name = 'phone'`,
+  );
+  if (phoneColumn[0].n === 0) {
+    await pool.query(
+      "ALTER TABLE users ADD COLUMN phone VARCHAR(30) NULL AFTER full_name",
+    );
+  }
   debug("migrated users table");
-}
-
-export function publicUser(row) {
-  return {
-    id: row.id,
-    username: row.username,
-    fullName: row.full_name,
-    role: row.role,
-  };
 }

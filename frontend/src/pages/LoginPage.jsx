@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useAuth } from "../AuthContext.jsx";
+import { useAuth } from "../contexts/useAuth.js";
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -29,7 +29,9 @@ export default function LoginPage() {
     <div className="auth">
       <form className="card" onSubmit={onSubmit}>
         <h1>Đăng nhập BlueMoon</h1>
-        <p className="muted">Chỉ thành viên Ban quản trị đã được cấp tài khoản.</p>
+        <p className="muted">
+          Chỉ thành viên Ban quản trị đã được cấp tài khoản.
+        </p>
         {error && (
           <p className="error" role="alert">
             {error}
