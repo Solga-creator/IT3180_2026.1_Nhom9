@@ -6,23 +6,6 @@ Charter gốc ghi Java desktop. Nhóm chốt **web app** cho lát này: React (V
 
 ## Chạy local
 
-MySQL đang chạy, user `root` không mật khẩu (máy dev).
-
-```bash
-# terminal 1
-cd backend
-npm install
-npm run seed
-npm run dev
-
-# terminal 2
-cd frontend
-npm install
-npm run dev
-```
-
-Mở http://localhost:5174
-
 Tài khoản quản trị seed: `admin` / `admin123`
 
 ## AC lát này
