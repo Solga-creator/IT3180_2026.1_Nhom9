@@ -2,7 +2,7 @@
 
 Phần mềm quản lý thu phí chung cư BlueMoon, nhóm SE09. **Hôm nay chỉ tài khoản và đăng nhập.** Không phải bản v1.0 đầy đủ.
 
-Charter gốc ghi Java desktop. Nhóm chốt **web app** cho lát này: React (Vite :5174) + Express (:3001) + MySQL `bluemoon_se09`. Không dùng database `bluemoon` của nhóm khóa trước.
+ React (Vite :5174) + Express (:3001) + MySQL `bluemoon_se09`.
 
 ## Chạy local
 
