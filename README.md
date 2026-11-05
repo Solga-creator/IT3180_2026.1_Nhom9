@@ -4,10 +4,10 @@
 
 ## Phạm vi hiện tại
 
+- **US-001:** Lưu căn hộ và diện tích (m²) tại màn hình chính, làm cơ sở lưu nhân khẩu (US-002) và tính phí dịch vụ/quản lý (US-008).
 - **US-015:** Quản trị viên cấp và quản lý tài khoản thành viên BQT.
 - **US-016:** Đăng nhập bằng tài khoản được cấp; API và trang nghiệp vụ yêu cầu xác thực.
 - **US-017:** Thành viên cập nhật hồ sơ của mình và đổi mật khẩu sau khi xác minh mật khẩu hiện tại.
-- Các nghiệp vụ ngoài US-015–US-017 chưa được đưa vào codebase hiện tại.
 
 ## Kiến trúc và công nghệ
 
@@ -35,7 +35,7 @@ Backend được chia theo luồng API và nghiệp vụ, không tổ chức the
 |---|---|---|
 | Frontend | JavaScript, React, React Router, Vite | Giao diện, điều hướng và gọi API |
 | Backend | JavaScript, Node.js, Express | REST API, xác thực, nghiệp vụ |
-| Database | MySQL, `mysql2` | Lưu tài khoản và hồ sơ người dùng |
+| Database | MySQL, `mysql2` | Lưu tài khoản, hồ sơ người dùng và danh mục căn hộ |
 | Bảo mật đăng nhập | JWT, `bcrypt` | Token phiên đăng nhập và băm mật khẩu |
 
 ## Cấu trúc
@@ -80,6 +80,8 @@ Tất cả request/response dùng JSON, ngoại trừ endpoint health check. Cá
 | `POST` | `/api/accounts` | ADMIN | `username`, `fullName`, `password` |
 | `GET` | `/api/accounts` | ADMIN | Không có; trả danh sách tài khoản |
 | `DELETE` | `/api/accounts/:id` | ADMIN | ID tài khoản nằm trên URL |
+| `GET` | `/api/apartments` | Đã đăng nhập | Không có; trả danh mục căn hộ (US-001) |
+| `POST` | `/api/apartments` | Đã đăng nhập | `roomNumber`, `area`; lưu căn hộ mới (US-001) |
 
 Frontend gửi JWT trong header `Authorization: Bearer <token>` cho API cần đăng nhập. Backend luôn tự kiểm tra token và role; ẩn route ở frontend chỉ nhằm điều hướng giao diện, không thay thế kiểm tra quyền phía server.
 
@@ -151,11 +153,45 @@ Tài khoản ADMIN mẫu là `admin` / `admin123` nếu dùng giá trị mặc �
 
 ## Lệnh kiểm tra code
 
-Chạy trong thư mục `frontend`:
+Kiểm tra backend (validation, service, handler, API unit tests):
 
 ```powershell
+cd backend
+npm test
+```
+
+Kiểm tra frontend:
+
+```powershell
+cd frontend
 npm run lint
 npm run build
 ```
 
 `npm run build` tạo output production trong `frontend/dist/`; đây là file sinh tự động, không chỉnh sửa thủ công.
+
+## Kịch bản kiểm thử Demo Sprint 1 (US-001: Lưu căn hộ và diện tích)
+
+1. **Khởi động hệ thống:**
+   - Đảm bảo MySQL đang chạy và database `bluemoon_se09` đã được tạo.
+   - Chạy `npm run dev` ở backend (`http://127.0.0.1:3001`). Migration tự động tạo bảng `apartments` nếu chưa có.
+   - Chạy `npm run dev` ở frontend (`http://localhost:5174`).
+2. **Đăng nhập:**
+   - Mở trình duyệt tại `http://localhost:5174/login`.
+   - Đăng nhập bằng tài khoản `admin` / `admin123` (hoặc tài khoản BQT đã được cấp).
+   - Hệ thống tự chuyển vào **Màn hình chính**.
+3. **Thêm căn hộ mẫu Sprint 1:**
+   - Tại form "Lưu căn hộ và diện tích":
+     + Số phòng: nhập `050`
+     + Diện tích (m²): nhập `60`
+     + Bấm nút **Lưu**.
+   - **Kết quả nghiệm thu:**
+     + Xuất hiện thông báo: `Đã lưu căn hộ 050 (60 m²).`
+     + Căn hộ `050` với diện tích `60 m²` xuất hiện ngay lập tức trong bảng "Danh mục căn hộ" phía dưới.
+     + Form nhập được reset về trạng thái trống.
+     + Dữ liệu được lưu bền vững vào bảng `apartments` trong MySQL.
+4. **Kiểm tra chống trùng lặp (Validation Unique):**
+   - Tiếp tục nhập lại Số phòng `050` với diện tích `60` và bấm **Lưu**.
+   - **Kết quả nghiệm thu:** Hệ thống báo lỗi `Số phòng "050" đã tồn tại trong danh mục.` và không cho phép ghi đè.
+5. **Kiểm tra ràng buộc diện tích:**
+   - Nhập Số phòng `101` với diện tích `0` hoặc `-10` -> Báo lỗi `Diện tích căn hộ bắt buộc phải là số lớn hơn 0 m².` (không dùng diện tích 450 m² của toàn khu đất).

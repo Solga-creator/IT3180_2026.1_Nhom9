@@ -5,3 +5,8 @@ dist/
 *.log
 __pycache__/
 .venv/
+*.xlsx
+*.xls
+~$*.xlsx
+~$*.xls
+
