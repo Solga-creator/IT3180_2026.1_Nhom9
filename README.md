@@ -5,6 +5,9 @@
 ## Phạm vi hiện tại
 
 - **US-001:** Lưu căn hộ và diện tích (m²) tại màn hình chính, làm cơ sở lưu nhân khẩu (US-002) và tính phí dịch vụ/quản lý (US-008).
+- **US-002:** Lưu chủ hộ và nhân khẩu theo từng căn hộ.
+- **US-003:** Tìm hồ sơ hộ/nhân khẩu theo số phòng hoặc họ tên.
+- **US-004:** Ghi tình trạng tạm trú, tạm vắng, chuyển đi, chuyển đến và lưu lịch sử.
 - **US-015:** Quản trị viên cấp và quản lý tài khoản thành viên BQT.
 - **US-016:** Đăng nhập bằng tài khoản được cấp; API và trang nghiệp vụ yêu cầu xác thực.
 - **US-017:** Thành viên cập nhật hồ sơ của mình và đổi mật khẩu sau khi xác minh mật khẩu hiện tại.
@@ -49,7 +52,7 @@ backend/
   helpers/      Hàm dùng chung
   middlewares/  Xác thực và phân quyền
   repositories/ Truy vấn và ánh xạ dữ liệu MySQL
-  services/     Nghiệp vụ US-015–US-017
+  services/     Nghiệp vụ US-001–US-004 và US-015–US-017
   validators/   Kiểm tra dữ liệu đầu vào
   app.js        Khởi tạo Express và gắn routes
   index.js      Migration và khởi động HTTP server
@@ -82,6 +85,9 @@ Tất cả request/response dùng JSON, ngoại trừ endpoint health check. Cá
 | `DELETE` | `/api/accounts/:id` | ADMIN | ID tài khoản nằm trên URL |
 | `GET` | `/api/apartments` | Đã đăng nhập | Không có; trả danh mục căn hộ (US-001) |
 | `POST` | `/api/apartments` | Đã đăng nhập | `roomNumber`, `area`; lưu căn hộ mới (US-001) |
+| `GET` | `/api/residents?search=` | Đã đăng nhập | Tùy chọn `search`; tìm theo số phòng hoặc họ tên (US-003), kèm lịch sử cư trú |
+| `POST` | `/api/residents` | Đã đăng nhập | `apartmentId`, `fullName`, `birthDate`, `relationship`; lưu chủ hộ/nhân khẩu (US-002) |
+| `POST` | `/api/residents/:id/residency-events` | Đã đăng nhập | `status`, `startDate`, `endDate`; cập nhật trạng thái và lưu lịch sử (US-004) |
 
 Frontend gửi JWT trong header `Authorization: Bearer <token>` cho API cần đăng nhập. Backend luôn tự kiểm tra token và role; ẩn route ở frontend chỉ nhằm điều hướng giao diện, không thay thế kiểm tra quyền phía server.
 
@@ -117,7 +123,7 @@ Các lệnh dưới đây giả định terminal bắt đầu tại thư mục g
    | `DEBUG` | Bật/tắt log debug | `true` hoặc `false` |
    | `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `ADMIN_FULL_NAME` | Thông tin ADMIN tạo bởi seed | `admin`, `admin123`, `Quản trị viên SE09` |
 
-   Mỗi thành viên dùng file `.env` riêng vì thông tin MySQL có thể khác nhau. Không commit hoặc gửi mật khẩu lên Git. Khi backend khởi động, migration tự tạo/cập nhật bảng `users`; không cần tự tạo bảng bằng tay.
+   Mỗi thành viên dùng file `.env` riêng vì thông tin MySQL có thể khác nhau. Không commit hoặc gửi mật khẩu lên Git. Khi backend khởi động, migration tự tạo/cập nhật các bảng `users`, `apartments`, `households`, `residents` và `residency_events`; không cần tự tạo bảng bằng tay.
 
 3. Trong terminal thứ nhất, cài dependency, tạo tài khoản admin mẫu và chạy backend:
 
@@ -153,12 +159,20 @@ Tài khoản ADMIN mẫu là `admin` / `admin123` nếu dùng giá trị mặc �
 
 ## Lệnh kiểm tra code
 
-Kiểm tra backend (validation, service, handler, API unit tests):
+Kiểm tra backend unit (validation, service và handler):
 
 ```powershell
 cd backend
 npm test
 ```
+
+Chạy API integration tests:
+
+```powershell
+npm run test:e2e
+```
+
+Các test API hiện có bao phủ luồng US-001; US-002–US-004 chưa có automated test riêng.
 
 Kiểm tra frontend:
 
@@ -195,3 +209,12 @@ npm run build
    - **Kết quả nghiệm thu:** Hệ thống báo lỗi `Số phòng "050" đã tồn tại trong danh mục.` và không cho phép ghi đè.
 5. **Kiểm tra ràng buộc diện tích:**
    - Nhập Số phòng `101` với diện tích `0` hoặc `-10` -> Báo lỗi `Diện tích căn hộ bắt buộc phải là số lớn hơn 0 m².` (không dùng diện tích 450 m² của toàn khu đất).
+
+## Kịch bản demo hộ và nhân khẩu (US-002–US-004)
+
+1. Đăng nhập bằng tài khoản BQT và mở mục **Hộ và nhân khẩu**.
+2. Chọn căn hộ đã được lưu ở US-001, nhập họ tên/ngày sinh và chọn quan hệ **Chủ hộ** để tạo hồ sơ hộ.
+3. Thêm một hoặc nhiều nhân khẩu vào cùng căn hộ bằng quan hệ với chủ hộ. Mỗi căn hộ chỉ có một chủ hộ; cần tạo chủ hộ trước nhân khẩu khác.
+4. Tìm theo số phòng hoặc họ tên; danh sách chỉ hiện các nhân khẩu có thông tin khớp. Mỗi dòng hiển thị căn hộ, họ tên, ngày sinh, quan hệ và trạng thái hiện tại.
+5. Chọn **Cập nhật trạng thái**, chọn một trong các trạng thái thường trú/tạm trú/tạm vắng/chuyển đến/chuyển đi, nhập ngày bắt đầu và ngày kết thúc rồi xác nhận.
+6. Kiểm tra trạng thái hiện tại đã đổi và phần **Lịch sử** lưu lại trạng thái cùng khoảng ngày vừa nhập.

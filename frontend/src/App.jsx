@@ -5,6 +5,7 @@ import HomePage from "./pages/HomePage.jsx";
 import IssueAccountPage from "./pages/IssueAccountPage.jsx";
 import AppLayout from "./layouts/AppLayout.jsx";
 import ProfilePage from "./pages/ProfilePage.jsx";
+import ResidentsPage from "./pages/ResidentsPage.jsx";
 
 function GuestOnly({ children }) {
   const {
@@ -56,6 +57,7 @@ export default function App() {
         }
       >
         <Route path="/" element={<HomePage />} />
+        <Route path="/residents" element={<ResidentsPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route
           path="/accounts"

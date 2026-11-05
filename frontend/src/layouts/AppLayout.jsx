@@ -24,6 +24,7 @@ export default function AppLayout() {
         <NavLink to="/" end>
           Màn hình chính
         </NavLink>
+        <NavLink to="/residents">Hộ và nhân khẩu</NavLink>
         <NavLink to="/profile">Hồ sơ cá nhân</NavLink>
         {user.role === "ADMIN" && (
           <NavLink to="/accounts">Cấp tài khoản</NavLink>

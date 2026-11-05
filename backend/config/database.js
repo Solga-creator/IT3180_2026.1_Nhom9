@@ -47,4 +47,72 @@ export async function migrate() {
     )
   `);
   debug("migrated apartments table");
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS households (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      apartment_id INT NOT NULL UNIQUE,
+      head_resident_id INT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      CONSTRAINT fk_households_apartment
+        FOREIGN KEY (apartment_id) REFERENCES apartments(id)
+        ON DELETE CASCADE
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS residents (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      household_id INT NOT NULL,
+      full_name VARCHAR(120) NOT NULL,
+      birth_date DATE NOT NULL,
+      relationship_to_head VARCHAR(30) NOT NULL,
+      current_status VARCHAR(30) NOT NULL DEFAULT 'Thường trú',
+      status_start_date DATE NULL,
+      status_end_date DATE NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      INDEX idx_residents_name (full_name),
+      CONSTRAINT fk_residents_household
+        FOREIGN KEY (household_id) REFERENCES households(id)
+        ON DELETE CASCADE
+    )
+  `);
+
+  const [headReference] = await pool.query(
+    `SELECT COUNT(*) AS n
+     FROM information_schema.key_column_usage
+     WHERE table_schema = DATABASE()
+       AND table_name = 'households'
+       AND constraint_name = 'fk_households_head'`,
+  );
+  if (headReference[0].n === 0) {
+    await pool.query(`
+      ALTER TABLE households
+      ADD CONSTRAINT fk_households_head
+      FOREIGN KEY (head_resident_id) REFERENCES residents(id)
+      ON DELETE SET NULL
+    `);
+  }
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS residency_events (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      resident_id INT NOT NULL,
+      status VARCHAR(30) NOT NULL,
+      start_date DATE NOT NULL,
+      end_date DATE NOT NULL,
+      recorded_by INT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_residency_events_resident (resident_id, start_date, id),
+      CONSTRAINT fk_residency_events_resident
+        FOREIGN KEY (resident_id) REFERENCES residents(id)
+        ON DELETE CASCADE,
+      CONSTRAINT fk_residency_events_user
+        FOREIGN KEY (recorded_by) REFERENCES users(id)
+        ON DELETE SET NULL
+    )
+  `);
+  debug("migrated household and residency tables");
 }
