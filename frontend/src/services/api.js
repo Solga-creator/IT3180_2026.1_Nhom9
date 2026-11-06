@@ -9,7 +9,7 @@ export function setToken(token) {
   else sessionStorage.removeItem(TOKEN_KEY);
 }
 
-export async function api(path, options = {}) {
+export async function api(path, options = {}, responseType = "json") {
   const headers = {
     ...(options.headers || {}),
   };
@@ -22,6 +22,7 @@ export async function api(path, options = {}) {
     ...options,
     headers,
   });
+  if (res.ok && responseType === "blob") return res.blob();
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     const err = new Error(data.message || "Yêu cầu thất bại.");

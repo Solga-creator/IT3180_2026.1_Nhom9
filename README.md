@@ -8,6 +8,7 @@
 - **US-002:** Lưu chủ hộ và nhân khẩu theo từng căn hộ.
 - **US-003:** Tìm hồ sơ hộ/nhân khẩu theo số phòng hoặc họ tên.
 - **US-004:** Ghi tình trạng tạm trú, tạm vắng, chuyển đi, chuyển đến và lưu lịch sử.
+- **US-005:** Xuất file Excel danh sách nhân khẩu theo trạng thái cư trú hiện tại, kèm căn hộ trong hồ sơ.
 - **US-015:** Quản trị viên cấp và quản lý tài khoản thành viên BQT.
 - **US-016:** Đăng nhập bằng tài khoản được cấp; API và trang nghiệp vụ yêu cầu xác thực.
 - **US-017:** Thành viên cập nhật hồ sơ của mình và đổi mật khẩu sau khi xác minh mật khẩu hiện tại.
@@ -71,7 +72,7 @@ frontend/
 
 ## API hiện tại
 
-Tất cả request/response dùng JSON, ngoại trừ endpoint health check. Các endpoint được proxy qua Vite trong môi trường phát triển.
+Các API dùng JSON, ngoại trừ phản hồi xuất Excel là dữ liệu nhị phân `.xlsx`. Các endpoint được proxy qua Vite trong môi trường phát triển.
 
 | Method | Endpoint | Quyền | Dữ liệu gửi lên |
 |---|---|---|---|
@@ -86,6 +87,7 @@ Tất cả request/response dùng JSON, ngoại trừ endpoint health check. Cá
 | `GET` | `/api/apartments` | Đã đăng nhập | Không có; trả danh mục căn hộ (US-001) |
 | `POST` | `/api/apartments` | Đã đăng nhập | `roomNumber`, `area`; lưu căn hộ mới (US-001) |
 | `GET` | `/api/residents?search=` | Đã đăng nhập | Tùy chọn `search`; tìm theo số phòng hoặc họ tên (US-003), kèm lịch sử cư trú |
+| `GET` | `/api/residents/export?status=` | Đã đăng nhập | Bắt buộc `status` thuộc một trong năm trạng thái cư trú; trả file `.xlsx` (US-005) |
 | `POST` | `/api/residents` | Đã đăng nhập | `apartmentId`, `fullName`, `birthDate`, `relationship`; lưu chủ hộ/nhân khẩu (US-002) |
 | `POST` | `/api/residents/:id/residency-events` | Đã đăng nhập | `status`, `startDate`, `endDate`; cập nhật trạng thái và lưu lịch sử (US-004) |
 
@@ -172,7 +174,7 @@ Chạy API integration tests:
 npm run test:e2e
 ```
 
-Các test API hiện có bao phủ luồng US-001; US-002–US-004 chưa có automated test riêng.
+Các test API hiện có bao phủ luồng US-001 và xuất Excel US-005; US-002–US-004 chưa có automated test riêng.
 
 Kiểm tra frontend:
 
@@ -180,6 +182,7 @@ Kiểm tra frontend:
 cd frontend
 npm run lint
 npm run build
+node --test tests/api.test.mjs
 ```
 
 `npm run build` tạo output production trong `frontend/dist/`; đây là file sinh tự động, không chỉnh sửa thủ công.
@@ -218,3 +221,15 @@ npm run build
 4. Tìm theo số phòng hoặc họ tên; danh sách chỉ hiện các nhân khẩu có thông tin khớp. Mỗi dòng hiển thị căn hộ, họ tên, ngày sinh, quan hệ và trạng thái hiện tại.
 5. Chọn **Cập nhật trạng thái**, chọn một trong các trạng thái thường trú/tạm trú/tạm vắng/chuyển đến/chuyển đi, nhập ngày bắt đầu và ngày kết thúc rồi xác nhận.
 6. Kiểm tra trạng thái hiện tại đã đổi và phần **Lịch sử** lưu lại trạng thái cùng khoảng ngày vừa nhập.
+
+## Kịch bản xuất Excel nhân khẩu (US-005 / WBS 3.1.8)
+
+1. Chạy `npm ci` trong `backend` sau khi lấy nhánh này để cài thêm ExcelJS, rồi khởi động lại backend.
+2. Đăng nhập, mở **Hộ và nhân khẩu**. Chuẩn bị nhân khẩu thuộc ít nhất hai trạng thái khác nhau.
+3. Trong **Xuất danh sách nhân khẩu**, chọn trạng thái rồi bấm **Xuất Excel**.
+4. Mở file `.xlsx`: kiểm tra STT, căn hộ, họ tên, ngày sinh, quan hệ với chủ hộ và trạng thái. Chỉ những người có trạng thái hiện tại khớp lựa chọn được xuất, mỗi người một dòng; lịch sử không tạo thêm dòng.
+5. Số phòng như `050` giữ nguyên số 0 đầu, ngày sinh hiển thị `dd/mm/yyyy`, tên tiếng Việt không lỗi dấu.
+6. Đổi trạng thái của một nhân khẩu bằng US-004 rồi xuất lại: người đó chỉ xuất hiện trong danh sách trạng thái mới.
+7. Chọn trạng thái không có người: giao diện báo không có nhân khẩu phù hợp, không tải file rỗng. Bộ lọc xuất độc lập với ô tìm kiếm.
+
+API yêu cầu đăng nhập, trả `400` nếu trạng thái thiếu/sai và `404` nếu không có kết quả. Căn hộ được lấy từ liên kết hồ sơ hiện có, kể cả người có trạng thái **Chuyển đi**; US-005 không thay đổi cách lưu căn hộ của US-004.

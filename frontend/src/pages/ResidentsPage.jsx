@@ -36,6 +36,32 @@ export default function ResidentsPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [exportStatus, setExportStatus] = useState("Thường trú");
+  const [exporting, setExporting] = useState(false);
+
+  async function onExport(event) {
+    event.preventDefault();
+    setError("");
+    setMessage("");
+    setExporting(true);
+    try {
+      const query = new URLSearchParams({ status: exportStatus });
+      const blob = await api(`/api/residents/export?${query}`, {}, "blob");
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `nhan-khau-${exportStatus}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setMessage(`Đã tải danh sách nhân khẩu: ${exportStatus}.`);
+    } catch (exportError) {
+      setError(exportError.message);
+    } finally {
+      setExporting(false);
+    }
+  }
 
   async function loadResidents(search = activeSearch) {
     const query = new URLSearchParams();
@@ -205,6 +231,29 @@ export default function ResidentsPage() {
         {apartments.length === 0 && !loading && (
           <p className="hint">Cần lưu căn hộ trước khi thêm chủ hộ.</p>
         )}
+      </form>
+
+      <form className="card form" onSubmit={onExport}>
+        <h2>Xuất danh sách nhân khẩu</h2>
+        <p className="hint">
+          Xuất toàn bộ nhân khẩu theo trạng thái hiện tại, kèm căn hộ trong hồ sơ.
+          Kết quả xuất không phụ thuộc ô tìm kiếm bên dưới.
+        </p>
+        <label>
+          Trạng thái cư trú cần xuất
+          <select
+            value={exportStatus}
+            onChange={(event) => setExportStatus(event.target.value)}
+            disabled={exporting}
+          >
+            {RESIDENCY_STATUSES.map((status) => (
+              <option key={status} value={status}>{status}</option>
+            ))}
+          </select>
+        </label>
+        <button type="submit" disabled={exporting || busy || loading}>
+          {exporting ? "Đang xuất…" : "Xuất Excel"}
+        </button>
       </form>
 
       <h2>Tra cứu hộ và nhân khẩu</h2>

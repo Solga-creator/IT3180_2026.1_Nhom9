@@ -127,6 +127,24 @@ export async function listResidents(searchInput = "") {
   );
 }
 
+export async function listResidentsByStatus(status) {
+  const [rows] = await pool.query(
+    `SELECT
+      a.room_number,
+      r.full_name,
+      DATE_FORMAT(r.birth_date, '%Y-%m-%d') AS birth_date,
+      r.relationship_to_head,
+      r.current_status
+     FROM residents r
+     JOIN households h ON h.id = r.household_id
+     JOIN apartments a ON a.id = h.apartment_id
+     WHERE r.current_status = ?
+     ORDER BY a.room_number ASC, r.id ASC`,
+    [status],
+  );
+  return rows;
+}
+
 export async function createResident(input) {
   const connection = await pool.getConnection();
   try {
