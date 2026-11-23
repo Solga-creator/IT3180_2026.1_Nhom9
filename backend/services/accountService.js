@@ -60,6 +60,9 @@ export async function removeAccount(idInput, currentUserId) {
   if (!target) {
     throw new AppError(404, "Tài khoản không tồn tại.");
   }
+  if (target.role === "RESIDENT") {
+    throw new AppError(400, "Tài khoản cư dân được xóa ở màn hình cấp tài khoản cư dân.");
+  }
   if (target.id === currentUserId) {
     throw new AppError(400, "Không thể xóa tài khoản đang đăng nhập.");
   }

@@ -24,6 +24,12 @@ export function currentUser(req, res) {
 }
 
 export async function saveProfile(req, res) {
+  if (req.user.role === "RESIDENT") {
+    return res.status(403).json({
+      success: false,
+      message: "Cư dân không sửa hồ sơ tại đây.",
+    });
+  }
   const user = await updateProfile(req.user.id, req.body);
   return res.json({
     success: true,

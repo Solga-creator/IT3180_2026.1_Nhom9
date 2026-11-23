@@ -20,3 +20,16 @@ export function validateAccountIssue(
   }
   return null;
 }
+
+export function validateResidentAccount(usernameInput, passwordInput) {
+  const username = String(usernameInput || "").trim();
+  const password = String(passwordInput || "");
+
+  if (username.length < 3 || !/^[a-zA-Z0-9._-]+$/.test(username)) {
+    return "Tên đăng nhập từ 3 ký tự, không dấu cách.";
+  }
+  if (password.length < 6) {
+    return "Mật khẩu khởi tạo tối thiểu 6 ký tự.";
+  }
+  return null;
+}

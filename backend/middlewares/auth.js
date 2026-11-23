@@ -47,6 +47,16 @@ export async function requireAuth(req, res, next) {
   }
 }
 
+export function requireStaff(req, res, next) {
+  if (req.user?.role !== "ADMIN" && req.user?.role !== "BQT") {
+    return res.status(403).json({
+      success: false,
+      message: "Cư dân không được vào màn hình này.",
+    });
+  }
+  return next();
+}
+
 export function requireAdmin(req, res, next) {
   if (req.user?.role !== "ADMIN") {
     return res.status(403).json({

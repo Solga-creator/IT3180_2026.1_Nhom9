@@ -30,7 +30,7 @@ export default function LoginPage() {
       <form className="card" onSubmit={onSubmit}>
         <h1>Đăng nhập BlueMoon</h1>
         <p className="muted">
-          Chỉ thành viên Ban quản trị đã được cấp tài khoản.
+          Dành cho thành viên Ban quản trị và cư dân đã được cấp tài khoản.
         </p>
         {error && (
           <p className="error" role="alert">

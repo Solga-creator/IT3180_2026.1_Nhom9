@@ -14,7 +14,11 @@ export default function AppLayout() {
         </div>
         <div className="who">
           {user.fullName} (
-          {user.role === "ADMIN" ? "Quản trị" : "Thành viên BQT"})
+          {user.role === "ADMIN"
+            ? "Quản trị"
+            : user.role === "RESIDENT"
+              ? "Cư dân"
+              : "Thành viên BQT"})
           <button type="button" className="link" onClick={logout}>
             Đăng xuất
           </button>
@@ -24,10 +28,17 @@ export default function AppLayout() {
         <NavLink to="/" end>
           Màn hình chính
         </NavLink>
-        <NavLink to="/residents">Hộ và nhân khẩu</NavLink>
-        <NavLink to="/profile">Hồ sơ cá nhân</NavLink>
-        {user.role === "ADMIN" && (
-          <NavLink to="/accounts">Cấp tài khoản</NavLink>
+        {user.role === "RESIDENT" ? (
+          <NavLink to="/profile">Đổi mật khẩu</NavLink>
+        ) : (
+          <>
+            <NavLink to="/residents">Hộ và nhân khẩu</NavLink>
+            <NavLink to="/resident-accounts">Cấp tài khoản cư dân</NavLink>
+            <NavLink to="/profile">Hồ sơ cá nhân</NavLink>
+            {user.role === "ADMIN" && (
+              <NavLink to="/accounts">Cấp tài khoản</NavLink>
+            )}
+          </>
         )}
       </nav>
       <main className="main">

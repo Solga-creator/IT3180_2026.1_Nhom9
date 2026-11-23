@@ -6,6 +6,8 @@ import IssueAccountPage from "./pages/IssueAccountPage.jsx";
 import AppLayout from "./layouts/AppLayout.jsx";
 import ProfilePage from "./pages/ProfilePage.jsx";
 import ResidentsPage from "./pages/ResidentsPage.jsx";
+import ResidentHomePage from "./pages/ResidentHomePage.jsx";
+import IssueResidentAccountPage from "./pages/IssueResidentAccountPage.jsx";
 
 function GuestOnly({ children }) {
   const {
@@ -25,6 +27,23 @@ function RequireAuth({ children }) {
   if (!ready) return <p className="muted">Đang tải…</p>;
   if (!user) return <Navigate to="/login" replace />;
   return children;
+}
+
+function RequireStaff({ children }) {
+  const {
+    user,
+    ready,
+  } = useAuth();
+  if (!ready) return <p className="muted">Đang tải…</p>;
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.role === "RESIDENT") return <Navigate to="/" replace />;
+  return children;
+}
+
+function HomeSwitch() {
+  const { user } = useAuth();
+  if (user.role === "RESIDENT") return <ResidentHomePage />;
+  return <HomePage />;
 }
 
 function RequireAdmin({ children }) {
@@ -56,8 +75,23 @@ export default function App() {
           </RequireAuth>
         }
       >
-        <Route path="/" element={<HomePage />} />
-        <Route path="/residents" element={<ResidentsPage />} />
+        <Route path="/" element={<HomeSwitch />} />
+        <Route
+          path="/residents"
+          element={
+            <RequireStaff>
+              <ResidentsPage />
+            </RequireStaff>
+          }
+        />
+        <Route
+          path="/resident-accounts"
+          element={
+            <RequireStaff>
+              <IssueResidentAccountPage />
+            </RequireStaff>
+          }
+        />
         <Route path="/profile" element={<ProfilePage />} />
         <Route
           path="/accounts"

@@ -19,7 +19,8 @@ export async function migrate() {
       full_name VARCHAR(120) NOT NULL,
       phone VARCHAR(30) NULL,
       password_hash VARCHAR(255) NOT NULL,
-      role ENUM('ADMIN', 'BQT') NOT NULL DEFAULT 'BQT',
+      role ENUM('ADMIN', 'BQT', 'RESIDENT') NOT NULL DEFAULT 'BQT',
+      resident_id INT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
@@ -33,6 +34,42 @@ export async function migrate() {
   if (phoneColumn[0].n === 0) {
     await pool.query(
       "ALTER TABLE users ADD COLUMN phone VARCHAR(30) NULL AFTER full_name",
+    );
+  }
+  const [roleColumn] = await pool.query(
+    `SELECT COLUMN_TYPE AS columnType
+     FROM information_schema.columns
+     WHERE table_schema = DATABASE()
+       AND table_name = 'users'
+       AND column_name = 'role'`,
+  );
+  if (roleColumn[0] && !String(roleColumn[0].columnType).includes("RESIDENT")) {
+    await pool.query(
+      "ALTER TABLE users MODIFY role ENUM('ADMIN', 'BQT', 'RESIDENT') NOT NULL DEFAULT 'BQT'",
+    );
+  }
+  const [residentColumn] = await pool.query(
+    `SELECT COUNT(*) AS n
+     FROM information_schema.columns
+     WHERE table_schema = DATABASE()
+       AND table_name = 'users'
+       AND column_name = 'resident_id'`,
+  );
+  if (residentColumn[0].n === 0) {
+    await pool.query(
+      "ALTER TABLE users ADD COLUMN resident_id INT NULL AFTER role",
+    );
+  }
+  const [residentKey] = await pool.query(
+    `SELECT COUNT(*) AS n
+     FROM information_schema.statistics
+     WHERE table_schema = DATABASE()
+       AND table_name = 'users'
+       AND index_name = 'uq_users_resident'`,
+  );
+  if (residentKey[0].n === 0) {
+    await pool.query(
+      "ALTER TABLE users ADD UNIQUE KEY uq_users_resident (resident_id)",
     );
   }
   debug("migrated users table");
@@ -114,5 +151,19 @@ export async function migrate() {
         ON DELETE SET NULL
     )
   `);
+  const [residentAccountFk] = await pool.query(
+    `SELECT COUNT(*) AS n
+     FROM information_schema.referential_constraints
+     WHERE constraint_schema = DATABASE()
+       AND constraint_name = 'fk_users_resident'`,
+  );
+  if (residentAccountFk[0].n === 0) {
+    await pool.query(`
+      ALTER TABLE users
+      ADD CONSTRAINT fk_users_resident
+      FOREIGN KEY (resident_id) REFERENCES residents(id)
+      ON DELETE CASCADE
+    `);
+  }
   debug("migrated household and residency tables");
 }

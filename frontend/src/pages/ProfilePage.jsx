@@ -73,10 +73,11 @@ export default function ProfilePage() {
 
   return (
     <section>
-      <h1>Hồ sơ cá nhân</h1>
+      <h1>{user.role === "RESIDENT" ? "Đổi mật khẩu" : "Hồ sơ cá nhân"}</h1>
       <p className="muted">
         Tài khoản: <strong>{user.username}</strong>
       </p>
+      {user.role !== "RESIDENT" && (
       <form className="form" onSubmit={saveProfile}>
         <h2>Thông tin cá nhân</h2>
         <label>
@@ -104,6 +105,7 @@ export default function ProfilePage() {
           {savingProfile ? "Đang lưu…" : "Lưu hồ sơ"}
         </button>
       </form>
+      )}
 
       <form className="form" onSubmit={changePassword}>
         <h2>Đổi mật khẩu</h2>
