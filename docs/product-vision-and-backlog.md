@@ -70,6 +70,27 @@ Tổng cộng **21 User Stories**: **19 US thuộc phạm vi v1.0** (16 Must + 3
 
 ---
 
+## 3.2. Sprint 2 Backlog — Kế hoạch chuẩn bị (Mục 3 & Mục 4 — 11 US, 38 SP, Trạng thái: Chưa bắt đầu)
+
+- **Mục tiêu Sprint 2 (13/11 – 30/11/2026 — Planned / Not Started):** Xây dựng phân hệ quản lý đơn giá phí bắt buộc, quỹ đóng góp tự nguyện, sinh bảng thu đầu tháng theo diện tích căn hộ, thu tiền & in biên lai/giấy báo, theo dõi công nợ, xuất báo cáo thu phí Excel, phân quyền chi tiết và nhật ký kiểm toán (8 Must US + 3 Should US — 38 Story Points).
+- **Trạng thái thực thi hiện tại:** Đã hoàn tất lập kế hoạch Sprint 2 Backlog và tài liệu Base kỹ thuật ([sprint2-technical-base.md](./sprint2-technical-base.md)); **chưa bắt đầu triển khai code chức năng Sprint 2 (`0/11 US`)**.
+
+| WBS | US ID | Chủ sở hữu | Lịch dự kiến | SP | Phụ thuộc | Tiêu chí chấp nhận (Acceptance Criteria) | Trạng thái |
+|---|---|---|---|---:|---|---|---|
+| `3.3.1` | **US-006** | Nguyễn Quang Nhật | 13/11 – 15/11 | 3 | 3.1.4 (`US-001`) | *Given* đăng nhập vai trò Kế toán/BQT, *When* nhập đơn giá phí dịch vụ trong khung $2.500\text{–}16.500\text{ đ/m}^2$ và phí quản lý $\ge 7.000\text{ đ/m}^2$ rồi bấm Lưu, *Then* hệ thống lưu cấu hình đơn giá áp dụng cho kỳ thu. *When* nhập ngoài khung quy định, *Then* từ chối lưu và báo lỗi. | Planned (0%) |
+| `3.3.2` | **US-007** | Lê Tuấn Vĩ | 15/11 – 16/11 | 2 | 3.1.2 (`US-016`) | *Given* thành viên BQT đăng nhập, *When* tạo đợt đóng góp tự nguyện (tên quỹ, đợt vận động, ngày bắt đầu/kết thúc), *Then* đợt đóng góp được lưu tách biệt hoàn toàn với các khoản phí bắt buộc. | Planned (0%) |
+| `3.3.3` | **US-008** | Nguyễn Quang Nhật | 16/11 – 19/11 | 5 | 3.3.1 (`US-006`) | *Given* đã có danh mục căn hộ kèm diện tích (`apartments.area`) và đơn giá phí, *When* kế toán chọn tháng/năm và bấm Sinh bảng thu đầu tháng, *Then* hệ thống tự động tạo hóa đơn cho mọi căn hộ theo công thức $\text{Phí} = \text{Diện tích} \times \text{Đơn giá}$. Không cho phép sinh trùng kỳ thu. | Planned (0%) |
+| `3.3.4` | **US-009** | Đặng Gia Bảo | 19/11 – 20/11 | 3 | 3.3.3 (`US-008`) | *Given* bảng thu kỳ hiện tại đã được sinh, *When* chọn một căn hộ và bấm Xem/In giấy báo phí, *Then* hiển thị đúng số phòng, chủ hộ, diện tích, chi tiết từng khoản phí và tổng số tiền phải nộp. | Planned (0%) |
+| `3.3.5` | **US-010** | Lê Tuấn Vĩ | 20/11 – 23/11 | 5 | 3.3.3 (`US-008`) | *Given* căn hộ có khoản phải thu trong kỳ, *When* thủ quỹ nhập số tiền cư dân nộp, chọn hình thức (`Tiền mặt` / `Chuyển khoản`) và bấm Ghi nhận, *Then* giao dịch được lưu, cập nhật số đã nộp/còn nợ của căn hộ và xuất mẫu biên lai thu tiền. | Planned (0%) |
+| `3.3.6` | **US-011** | Lê Tuấn Vĩ | 23/11 – 24/11 | 3 | 3.3.2 (`US-007`) | *Given* đợt đóng góp tự nguyện đang mở, *When* thủ quỹ chọn căn hộ/hộ gia đình, chọn quỹ và nhập số tiền ủng hộ, *Then* hệ thống lưu khoản ủng hộ theo đúng đợt và quỹ mà không cộng lẫn vào công nợ phí bắt buộc. | Planned (0%) |
+| `3.3.7` | **US-012** | Nguyễn Quang Nhật | 24/11 – 25/11 | 3 | 3.3.5 (`US-010`) | *Given* đang trong hoặc sau kỳ thu, *When* kế toán mở danh sách công nợ theo kỳ, *Then* hệ thống lọc chính xác các căn hộ chưa nộp hoặc nộp chưa đủ (`total_paid < total_due`) kèm số tiền còn thiếu. | Planned (0%) |
+| `3.3.8` | **US-013** | Đặng Gia Bảo | 25/11 – 26/11 | 3 | 3.3.5, 3.3.6 | *Given* chọn một căn hộ bất kỳ, *When* mở tab Lịch sử đóng tiền, *Then* hiển thị đầy đủ các lần nộp phí bắt buộc và ủng hộ tự nguyện theo thứ tự thời gian kèm người thu và phương thức thanh toán. | Planned (0%) |
+| `3.3.9` | **US-014** | Đặng Gia Bảo | 26/11 – 28/11 | 5 | 3.3.5, 3.3.6 | *Given* đã có dữ liệu thu phí và ủng hộ, *When* kế toán chọn kỳ thu và bấm Xuất báo cáo Excel, *Then* tải về file `.xlsx` tổng hợp chính xác tổng số tiền đã thu theo từng loại phí bắt buộc và theo từng quỹ tự nguyện. | Planned (0%) |
+| `3.3.10` | **US-018** | Phạm Minh Hiếu | 28/11 – 29/11 | 3 | 3.1.1 (`US-015`) | *Given* đăng nhập bằng `ADMIN`, *When* gán vai trò chi tiết cho tài khoản BQT (`ADMIN`, `ACCOUNTANT`, `TREASURER`, `BQT`), *Then* hệ thống phân quyền truy cập API và menu tương ứng với vai trò được gán. | Planned (0%) |
+| `3.3.11` | **US-019** | Phạm Minh Hiếu | 29/11 – 30/11 | 3 | 3.1.5, 3.3.5 | *Given* có thao tác thêm/sửa/xóa hồ sơ cư dân hoặc ghi nhận giao dịch thu phí, *When* `ADMIN` mở màn hình Nhật ký hệ thống, *Then* hiển thị lịch sử thao tác (người thực hiện, hành động, đối tượng, thời gian). | Planned (0%) |
+
+---
+
 ## 4. Kiến trúc Phân tầng Client–Server & Design Patterns (Mục 10)
 
 ### 4.1. Kiến trúc Client–Server + Layered REST API (Khác biệt với Monolithic MVC)
