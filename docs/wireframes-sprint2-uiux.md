@@ -2,8 +2,7 @@
 
 Tài liệu này mô tả chi tiết **32 khung thiết kế UI/UX (Prototype / Wireframe)** cho toàn bộ **11 User Stories của Sprint 2** (`US-006`..`014`, `US-018`..`019`), kế thừa trực tiếp khung **Master Layout Base (`WF-BASE`)** của Sprint 1. Kết hợp với **12 khung Sprint 1 (`WF-01`..`WF-12`)**, dự án hoàn thiện trọn bộ **`44 / 44` khung Prototype / Wireframe (100% Mục 5 Checklist)**.
 
-- **File nguồn Draw.io:** [Wireframes_Sprint2.drawio](./Wireframes_Sprint2.drawio)
-- **Thư mục Google Drive (gồm cả `.drawio` và ảnh `.png`):** `Diagram Sprint 1 / Prototype - Wireframe`
+- **File nguồn Draw.io & 14 ảnh `.png` trên Google Drive:** [Prototype - Wireframe (Google Drive)](https://drive.google.com/drive/folders/1UPjX_bRgkSOnabKz-OSyh_xRvgoKEf30) (kèm file nguồn `.drawio` trong thư mục `File draw.io` để chỉnh sửa trực tiếp trên `app.diagrams.net`)
 - **Trạng thái code Sprint 2:** Chưa bắt đầu code (`0/11 US`); đây là tài liệu thiết kế UI/UX chuẩn bị trước để cả 4 thành viên thống nhất giao diện và hợp đồng dữ liệu.
 
 ---
