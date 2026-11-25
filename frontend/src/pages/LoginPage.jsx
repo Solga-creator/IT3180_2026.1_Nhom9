@@ -61,7 +61,6 @@ export default function LoginPage() {
         <button type="submit" disabled={busy}>
           {busy ? "Đang vào…" : "Đăng nhập"}
         </button>
-        <p className="hint">Tài khoản quản trị mẫu: admin / admin123</p>
       </form>
     </div>
   );
