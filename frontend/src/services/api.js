@@ -1,4 +1,5 @@
 const TOKEN_KEY = "bluemoon.token";
+const API_BASE = (import.meta.env.VITE_API_URL || "").replace(/\/+$/, "");
 
 export function getToken() {
   return sessionStorage.getItem(TOKEN_KEY);
@@ -18,7 +19,8 @@ export async function api(path, options = {}, responseType = "json") {
   }
   const token = getToken();
   if (token) headers.Authorization = `Bearer ${token}`;
-  const res = await fetch(path, {
+  const url = path.startsWith("http") ? path : `${API_BASE}${path}`;
+  const res = await fetch(url, {
     ...options,
     headers,
   });

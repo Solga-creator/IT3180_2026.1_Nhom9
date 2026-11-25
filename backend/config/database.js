@@ -9,6 +9,9 @@ export const pool = mysql.createPool({
   database: process.env.DB_NAME || "bluemoon_se09",
   waitForConnections: true,
   connectionLimit: 10,
+  ...(process.env.DB_SSL === "true"
+    ? { ssl: { rejectUnauthorized: false } }
+    : {}),
 });
 
 export async function migrate() {

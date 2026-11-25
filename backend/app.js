@@ -4,9 +4,19 @@ import apiRoutes from "./api/routes/index.js";
 import { debug } from "./helpers/debug.js";
 
 const app = express();
+const extraOrigins = (process.env.CORS_ORIGIN || "")
+  .split(",")
+  .map((o) => o.trim().replace(/\/+$/, ""))
+  .filter(Boolean);
+const allowedOrigins = [
+  "http://localhost:5174",
+  "http://127.0.0.1:5174",
+  ...extraOrigins,
+];
+
 app.use(
   cors({
-    origin: ["http://localhost:5174", "http://127.0.0.1:5174"],
+    origin: allowedOrigins,
     credentials: true,
   }),
 );

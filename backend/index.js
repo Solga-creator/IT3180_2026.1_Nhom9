@@ -3,10 +3,11 @@ import app from "./app.js";
 import { migrate } from "./config/database.js";
 
 const port = Number(process.env.PORT || 3001);
+const host = process.env.HOST || "0.0.0.0";
 await migrate();
 
-const server = app.listen(port, "127.0.0.1", () => {
-  console.info(`BlueMoon SE09 API http://127.0.0.1:${port}`);
+const server = app.listen(port, host, () => {
+  console.info(`BlueMoon SE09 API http://${host}:${port}`);
 });
 server.on("error", (err) => {
   console.error("listen failed", err.message);
