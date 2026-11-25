@@ -10,3 +10,6 @@ __pycache__/
 ~$*.xlsx
 ~$*.xls
 .local/
+.vercel/
+.env.local
+
