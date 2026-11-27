@@ -1,7 +1,10 @@
 import bcrypt from "bcrypt";
 import {
+  clearFailedLogin,
   findPasswordHash,
+  findUserById,
   findUserByUsername,
+  recordFailedLogin,
   toPublicUser,
   updatePassword,
   updateProfile,
@@ -14,6 +17,9 @@ import {
   validateProfile,
 } from "../validators/authValidation.js";
 
+const MAX_FAILED_LOGIN_ATTEMPTS = 5;
+const LOCK_DURATION_MS = 5 * 60 * 1000;
+
 export async function login(usernameInput, passwordInput) {
   const username = String(usernameInput || "").trim();
   const password = String(passwordInput || "");
@@ -22,12 +28,44 @@ export async function login(usernameInput, passwordInput) {
   }
 
   const user = await findUserByUsername(username);
+  if (user?.locked_until && new Date(user.locked_until).getTime() > Date.now()) {
+    throw new AppError(
+      423,
+      "Tài khoản đang tạm khóa 5 phút do nhập sai mật khẩu quá 5 lần. Vui lòng thử lại sau.",
+    );
+  }
+
   const validPassword = user
     ? await bcrypt.compare(password, user.password_hash)
     : false;
   if (!validPassword) {
+    if (user?.id) {
+      const nextAttempts = Number(user.failed_login_attempts || 0) + 1;
+      const lockedUntil =
+        nextAttempts >= MAX_FAILED_LOGIN_ATTEMPTS
+          ? new Date(Date.now() + LOCK_DURATION_MS)
+          : null;
+      await recordFailedLogin(user.id, nextAttempts, lockedUntil);
+      if (lockedUntil) {
+        throw new AppError(
+          423,
+          "Tài khoản đang tạm khóa 5 phút do nhập sai mật khẩu quá 5 lần. Vui lòng thử lại sau.",
+        );
+      }
+    }
     debug("login failed", username);
     throw new AppError(401, "Tên đăng nhập hoặc mật khẩu không đúng.");
+  }
+
+  if (user.account_status === "PENDING") {
+    throw new AppError(
+      403,
+      "Tài khoản đang chờ Ban quản trị phê duyệt. Vui lòng quay lại sau.",
+    );
+  }
+
+  if (user.failed_login_attempts > 0 || user.locked_until) {
+    await clearFailedLogin(user.id);
   }
 
   debug("login ok", username);
@@ -69,5 +107,13 @@ export async function changePassword(userId, input) {
   }
 
   const passwordHash = await bcrypt.hash(newPassword, 10);
-  await updatePassword(userId, passwordHash);
+  await updatePassword(userId, passwordHash, { mustChangePassword: false });
+  const updatedUser = await findUserById(userId);
+  if (!updatedUser) {
+    return null;
+  }
+  return {
+    token: signToken(updatedUser),
+    user: toPublicUser(updatedUser),
+  };
 }

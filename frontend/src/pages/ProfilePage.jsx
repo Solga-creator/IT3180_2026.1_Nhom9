@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { api } from "../services/api.js";
+import { api, setToken } from "../services/api.js";
 import { useAuth } from "../contexts/useAuth.js";
 
 export default function ProfilePage() {
@@ -60,6 +60,12 @@ export default function ProfilePage() {
           newPassword,
         }),
       });
+      if (data.token) {
+        setToken(data.token);
+      }
+      if (data.user) {
+        updateUser(data.user);
+      }
       setPasswordMessage(data.message);
       setCurrentPassword("");
       setNewPassword("");

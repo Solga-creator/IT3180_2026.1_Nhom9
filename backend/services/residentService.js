@@ -1,10 +1,14 @@
 import ExcelJS from "exceljs";
 import { AppError } from "../helpers/AppError.js";
+import { domainEventBus } from "../observers/domainEventBus.js";
 import {
   createResidencyEvent,
   createResident,
+  deleteResidentById,
+  getResidentHistoryById,
   listResidents,
   listResidentsByStatus,
+  updateResidentById,
 } from "../repositories/residentRepository.js";
 import {
   validateResidencyEvent,
@@ -12,16 +16,28 @@ import {
   RESIDENCY_STATUSES,
 } from "../validators/residentValidation.js";
 
-export async function getResidents(search) {
-  return listResidents(search);
+export async function getResidents(search, options = {}) {
+  return listResidents(search, options);
 }
 
-export async function exportResidents(status) {
+export async function getResidentHistory(residentIdInput) {
+  const residentId = Number(residentIdInput);
+  if (!Number.isInteger(residentId) || residentId <= 0) {
+    throw new AppError(400, "Nhân khẩu không hợp lệ.");
+  }
+  return getResidentHistoryById(residentId);
+}
+
+export async function exportResidents(status, search = "", options = {}) {
   if (typeof status !== "string" || !RESIDENCY_STATUSES.includes(status)) {
     throw new AppError(400, "Chọn trạng thái cư trú hợp lệ để xuất Excel.");
   }
 
-  const residents = await listResidentsByStatus(status);
+  if (options.apartmentId !== undefined &&
+      (!Number.isInteger(Number(options.apartmentId)) || Number(options.apartmentId) <= 0)) {
+    throw new AppError(400, "Chọn căn hộ hợp lệ để xuất Excel.");
+  }
+  const residents = await listResidentsByStatus(status, search, options);
   if (residents.length === 0) {
     throw new AppError(404, "Không có nhân khẩu thuộc trạng thái đã chọn.");
   }
@@ -58,6 +74,7 @@ export async function addResident(input) {
     apartmentId: Number(input?.apartmentId),
     fullName: String(input?.fullName || "").trim(),
     birthDate: String(input?.birthDate || ""),
+    cccd: String(input?.cccd || "").trim(),
     relationship: String(input?.relationship || "").trim(),
   };
 
@@ -76,7 +93,64 @@ export async function addResident(input) {
   if (result.reason === "HOUSEHOLD_HEAD_EXISTS") {
     throw new AppError(409, "Căn hộ này đã có chủ hộ.");
   }
+  await domainEventBus.publish("RESIDENT_CREATED", {
+    residentId: result.resident?.id,
+    roomNumber: result.resident?.roomNumber,
+    fullName: result.resident?.fullName,
+  });
   return result.resident;
+}
+
+export async function editResident(residentIdInput, input) {
+  const residentId = Number(residentIdInput);
+  if (!Number.isInteger(residentId) || residentId <= 0) {
+    throw new AppError(400, "Nhân khẩu không hợp lệ.");
+  }
+
+  const residentInput = {
+    fullName: String(input?.fullName || "").trim(),
+    birthDate: String(input?.birthDate || ""),
+    cccd: String(input?.cccd || "").trim(),
+    relationship: String(input?.relationship || "").trim(),
+  };
+
+  const validationError = validateResidentInput(residentInput, {
+    requireApartment: false,
+  });
+  if (validationError) {
+    throw new AppError(400, validationError);
+  }
+
+  const result = await updateResidentById(residentId, residentInput);
+  if (result.reason === "RESIDENT_NOT_FOUND") {
+    throw new AppError(404, "Không tìm thấy nhân khẩu.");
+  }
+  if (result.reason === "CANNOT_DEMOTE_HEAD_DIRECTLY") {
+    throw new AppError(
+      400,
+      "Hãy chọn một nhân khẩu khác trong hộ đặt làm Chủ hộ để thay thế.",
+    );
+  }
+  return result.resident;
+}
+
+export async function removeResident(residentIdInput) {
+  const residentId = Number(residentIdInput);
+  if (!Number.isInteger(residentId) || residentId <= 0) {
+    throw new AppError(400, "Nhân khẩu không hợp lệ.");
+  }
+
+  const result = await deleteResidentById(residentId);
+  if (result.reason === "RESIDENT_NOT_FOUND") {
+    throw new AppError(404, "Không tìm thấy nhân khẩu.");
+  }
+  if (result.reason === "CANNOT_DELETE_HEAD_WITH_MEMBERS") {
+    throw new AppError(
+      400,
+      "Hãy chuyển quyền Chủ hộ hoặc xóa các thành viên khác trước khi xóa chủ hộ.",
+    );
+  }
+  return result.fullName;
 }
 
 export async function updateResidencyStatus(residentIdInput, input, userId) {
@@ -87,8 +161,11 @@ export async function updateResidencyStatus(residentIdInput, input, userId) {
 
   const event = {
     status: String(input?.status || "").trim(),
-    startDate: String(input?.startDate || ""),
-    endDate: String(input?.endDate || ""),
+    startDate: String(input?.startDate || "").trim(),
+    endDate:
+      input?.endDate === null || input?.endDate === undefined
+        ? ""
+        : String(input.endDate).trim(),
   };
   const validationError = validateResidencyEvent(event);
   if (validationError) {
@@ -99,5 +176,12 @@ export async function updateResidencyStatus(residentIdInput, input, userId) {
   if (!resident) {
     throw new AppError(404, "Không tìm thấy nhân khẩu.");
   }
+  await domainEventBus.publish("RESIDENCY_STATUS_CHANGED", {
+    residentId,
+    status: event.status,
+    startDate: event.startDate,
+    endDate: event.endDate || null,
+    recordedBy: userId,
+  });
   return resident;
 }

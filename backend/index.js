@@ -1,7 +1,9 @@
 import "dotenv/config";
 import app from "./app.js";
 import { migrate } from "./config/database.js";
+import { assertJwtConfigured } from "./middlewares/auth.js";
 
+assertJwtConfigured();
 const port = Number(process.env.PORT || 3001);
 const host = process.env.HOST || "0.0.0.0";
 await migrate();

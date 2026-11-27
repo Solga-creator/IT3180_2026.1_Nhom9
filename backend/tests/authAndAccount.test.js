@@ -16,8 +16,15 @@ import {
   issueAccount,
   getAccounts,
   removeAccount,
+  resetStaffPassword,
 } from "../services/accountService.js";
 import {
+  approveResidentAccount,
+  getMyResidence,
+  registerResidentAccount,
+} from "../services/residentAccountService.js";
+import {
+  assertJwtConfigured,
   signToken,
   requireAuth,
   requireAdmin,
@@ -61,7 +68,7 @@ test("US-015 Service: Cấp tài khoản mới và lấy danh sách tài khoản
       return [[], []];
     }
     if (/INSERT INTO users/i.test(sql)) return [{ insertId: 9 }, []];
-    if (/FROM users\s+ORDER BY id ASC/i.test(sql)) {
+    if (/FROM users[\s\S]*ORDER BY id ASC/i.test(sql)) {
       return [[
         { id: 1, username: "admin", full_name: "Quản trị viên", role: "ADMIN", created_at: new Date("2026-11-04T00:00:00Z") },
         { id: 9, username: "ketoan01", full_name: "Trần Kế Toán", role: "BQT", created_at: new Date("2026-11-04T01:00:00Z") },
@@ -236,4 +243,197 @@ test("US-017 Service: Đổi mật khẩu thành công sau khi xác minh mật k
 
   await changePassword(2, { currentPassword: "oldpass123", newPassword: "newpassword123" });
   assert.equal(await bcrypt.compare("newpassword123", savedHash), true);
+});
+
+test("US-016 Security: Khóa tạm tài khoản 5 phút sau 5 lần đăng nhập sai liên tiếp và chặn tài khoản PENDING", async (t) => {
+  const hash = await bcrypt.hash("matkhau123", 4);
+  let attempts = 4;
+  let lockedUntil = null;
+  let accountStatus = "ACTIVE";
+
+  t.mock.method(pool, "query", async (sql) => {
+    if (/WHERE username = \?/i.test(sql)) {
+      return [[{
+        id: 5,
+        username: "cudan050",
+        full_name: "Nguyễn Văn An",
+        password_hash: hash,
+        role: "RESIDENT",
+        account_status: accountStatus,
+        failed_login_attempts: attempts,
+        locked_until: lockedUntil,
+      }], []];
+    }
+    if (/SET failed_login_attempts = \?/i.test(sql)) {
+      attempts += 1;
+      lockedUntil = new Date(Date.now() + 5 * 60 * 1000);
+      return [{ affectedRows: 1 }, []];
+    }
+    return [[], []];
+  });
+
+  await assert.rejects(
+    login("cudan050", "sai_lan_5"),
+    { statusCode: 423 },
+  );
+
+  await assert.rejects(
+    login("cudan050", "matkhau123"),
+    { statusCode: 423 },
+  );
+
+  lockedUntil = null;
+  attempts = 0;
+  accountStatus = "PENDING";
+  await assert.rejects(
+    login("cudan050", "matkhau123"),
+    { statusCode: 403 },
+  );
+});
+
+test("US-015 & Cư dân: Cư dân tự đăng ký tài khoản PENDING, BQT duyệt, che CCCD thành viên khác và chặn xem hộ khi đã Chuyển đi", async (t) => {
+  let currentStatus = "PENDING";
+  let residencyStatus = "Thường trú";
+  t.mock.method(pool, "query", async (sql) => {
+    if (/LOWER\(TRIM\(a\.room_number\)\)/i.test(sql)) {
+      return [[{
+        id: 100,
+        full_name: "Nguyễn Văn An",
+        relationship_to_head: "Chủ hộ",
+        current_status: residencyStatus,
+        room_number: "050",
+      }], []];
+    }
+    if (/WHERE resident_id = \?/i.test(sql)) return [[], []];
+    if (/WHERE username = \?/i.test(sql)) return [[], []];
+    if (/INSERT INTO users/i.test(sql)) return [{ insertId: 15 }, []];
+    if (/SELECT \*\s+FROM users\s+WHERE id = \?/i.test(sql)) {
+      return [[{ id: 15, username: "cudan050", role: "RESIDENT", account_status: currentStatus }], []];
+    }
+    if (/SET account_status = \?/i.test(sql)) {
+      currentStatus = "ACTIVE";
+      return [{ affectedRows: 1 }, []];
+    }
+    if (/WHERE u\.id = \?\s+AND u\.role = 'RESIDENT'/i.test(sql)) {
+      return [[{
+        resident_id: 100,
+        household_id: 10,
+        full_name: "Nguyễn Văn An",
+        birth_date: "1985-05-15",
+        cccd: "001085012345",
+        relationship_to_head: "Chủ hộ",
+        current_status: residencyStatus,
+        apartment_id: 1,
+        room_number: "050",
+        area: "60.00",
+      }], []];
+    }
+    if (/WHERE r\.household_id = \?/i.test(sql) && /FROM residents r/i.test(sql)) {
+      return [[
+        {
+          id: 100,
+          full_name: "Nguyễn Văn An",
+          birth_date: "1985-05-15",
+          cccd: "001085012345",
+          relationship_to_head: "Chủ hộ",
+          current_status: "Thường trú",
+          status_start_date: null,
+          status_end_date: null,
+        },
+        {
+          id: 101,
+          full_name: "Trần Thị Bình",
+          birth_date: "1988-09-20",
+          cccd: "001188023456",
+          relationship_to_head: "Vợ/chồng",
+          current_status: "Thường trú",
+          status_start_date: null,
+          status_end_date: null,
+        },
+      ], []];
+    }
+    if (/FROM residency_events e/i.test(sql)) return [[], []];
+    return [[], []];
+  });
+
+  const reg = await registerResidentAccount({
+    roomNumber: "050",
+    fullName: "Nguyễn Văn An",
+    username: "cudan050",
+    password: "password123",
+  });
+  assert.equal(reg.accountStatus, "PENDING");
+  assert.equal(reg.roomNumber, "050");
+
+  const approved = await approveResidentAccount(15);
+  assert.equal(approved.accountStatus, "ACTIVE");
+
+  const residence = await getMyResidence({ id: 15, role: "RESIDENT" });
+  assert.equal(residence.roomNumber, "050");
+  assert.equal(residence.area, 60);
+  assert.equal(residence.members.length, 2);
+  assert.equal(residence.members[0].cccd, "001085012345");
+  assert.equal(residence.members[1].cccd, "********3456");
+
+  residencyStatus = "Chuyển đi";
+  await assert.rejects(
+    getMyResidence({ id: 15, role: "RESIDENT" }),
+    { statusCode: 403 },
+  );
+});
+
+test("US-015 & US-016 Security: Yêu cầu JWT_SECRET, sinh mật khẩu tạm ngẫu nhiên và thu hồi token cũ sau khi đổi/reset mật khẩu", async (t) => {
+  assert.throws(
+    () => assertJwtConfigured({ JWT_SECRET: "   " }),
+    /Thiếu cấu hình bắt buộc JWT_SECRET/,
+  );
+  assert.equal(assertJwtConfigured({ JWT_SECRET: "unit-test-secret" }), "unit-test-secret");
+
+  let dbTokenVersion = 0;
+  let mustChangePw = 0;
+  t.mock.method(pool, "query", async (sql) => {
+    if (/SELECT \*\s+FROM users\s+WHERE id = \?/i.test(sql)) {
+      return [[{
+        id: 2,
+        username: "ketoan01",
+        full_name: "Trần Kế Toán",
+        role: "BQT",
+        account_status: "ACTIVE",
+        token_version: dbTokenVersion,
+        must_change_password: mustChangePw,
+      }], []];
+    }
+    if (/UPDATE users[\s\S]*SET password_hash = \?/i.test(sql)) {
+      dbTokenVersion += 1;
+      mustChangePw = 1;
+      return [{ affectedRows: 1 }, []];
+    }
+    return [[], []];
+  });
+
+  const oldToken = signToken({
+    id: 2,
+    username: "ketoan01",
+    role: "BQT",
+    token_version: 0,
+  });
+
+  const res = await resetStaffPassword(2);
+  assert.equal(res.username, "ketoan01");
+  assert.equal(res.temporaryPassword.length, 8);
+  assert.notEqual(res.temporaryPassword, "123456");
+  assert.equal(res.mustChangePassword, true);
+  assert.equal(dbTokenVersion, 1);
+
+  const req = { headers: { authorization: `Bearer ${oldToken}` } };
+  let nextCalled = false;
+  const mockRes = {
+    statusCode: 200,
+    body: null,
+    status(code) { this.statusCode = code; return this; },
+    json(payload) { this.body = payload; return this; },
+  };
+  await requireAuth(req, mockRes, () => { nextCalled = true; });
+  assert.equal(nextCalled, false);
+  assert.equal(mockRes.statusCode, 401);
 });

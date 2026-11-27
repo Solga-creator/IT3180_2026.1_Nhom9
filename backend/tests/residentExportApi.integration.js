@@ -31,6 +31,8 @@ test("US-005 API: chặn yêu cầu không có token hoặc token sai", async ()
 test("US-005 API: BQT tải Excel theo từng trạng thái hiện tại và nhận lỗi JSON phù hợp", async (t) => {
   let empty = false;
   const fixtures = RESIDENCY_STATUSES.map((status, index) => ({
+    id: index + 1,
+    apartment_id: index + 1,
     room_number: `00${index + 1}`,
     full_name: `Cư dân ${index + 1}`,
     birth_date: "2000-01-01",
@@ -39,9 +41,11 @@ test("US-005 API: BQT tải Excel theo từng trạng thái hiện tại và nh�
   }));
   t.mock.method(pool, "query", async (sql, params) => {
     if (/FROM users\s+WHERE id = \?/i.test(sql)) return [[user], []];
-    assert.match(sql, /WHERE r.current_status = \?/);
+    if (/FROM residency_events/.test(sql)) return [[], []];
+    assert.doesNotMatch(sql, /WHERE r.current_status = \?/);
     assert.match(sql, /JOIN apartments/);
-    return [empty ? [] : fixtures.filter((row) => row.current_status === params[0]), []];
+    return [empty ? [] : /WHERE a.id = \?/.test(sql)
+      ? fixtures.filter((row) => row.apartment_id === params[0]) : fixtures, []];
   });
   const headers = { Authorization: `Bearer ${signToken(user)}` };
   await withServer(async (base) => {
@@ -64,6 +68,14 @@ test("US-005 API: BQT tải Excel theo từng trạng thái hiện tại và nh�
       const response = await fetch(`${base}/api/residents/export${query}`, { headers });
       assert.equal(response.status, 400);
       assert.equal((await response.json()).success, false);
+    }
+    const exact = await fetch(`${base}/api/residents/export?status=${encodeURIComponent("Thường trú")}&apartmentId=2`, { headers });
+    assert.equal(exact.status, 404);
+    const matching = await fetch(`${base}/api/residents/export?status=${encodeURIComponent("Thường trú")}&apartmentId=1`, { headers });
+    assert.equal(matching.status, 200);
+    for (const id of ["0", "-1", "abc", "1.5"]) {
+      const invalid = await fetch(`${base}/api/residents/export?status=${encodeURIComponent("Thường trú")}&apartmentId=${id}`, { headers });
+      assert.equal(invalid.status, 400);
     }
     empty = true;
     const response = await fetch(`${base}/api/residents/export?status=${encodeURIComponent("Tạm trú")}`, { headers });

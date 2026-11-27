@@ -8,30 +8,38 @@ Mở trình duyệt vào `http://localhost:5174`. Chưa đăng nhập thì web s
 
 Web có ba loại tài khoản, thanh menu phía trên sẽ tự ẩn/hiện tùy theo quyền của bạn:
 
-- Tài khoản Quản trị (`ADMIN`) dùng được hết các chức năng quản lý chung cư, cộng thêm mục **Cấp tài khoản** để tạo hoặc xóa tài khoản cho thành viên BQT.
-- Tài khoản Thành viên BQT (`BQT`) quản lý căn hộ, hộ và nhân khẩu, xuất Excel, cấp tài khoản cho cư dân và tự sửa hồ sơ cá nhân.
-- Tài khoản Cư dân (`RESIDENT`) chỉ xem được thông tin căn hộ và quan hệ với chủ hộ của mình ở màn hình chính, kèm trang đổi mật khẩu.
+- Tài khoản Quản trị (`ADMIN`) dùng được hết các chức năng quản lý chung cư, cộng thêm mục **Cấp tài khoản** để tạo, đặt lại mật khẩu 1-click hoặc xóa tài khoản cho thành viên BQT.
+- Tài khoản Thành viên BQT (`BQT`) quản lý căn hộ, hộ và nhân khẩu, xuất Excel, duyệt/cấp tài khoản cho cư dân và tự sửa hồ sơ cá nhân.
+- Tài khoản Cư dân (`RESIDENT`) xem được toàn bộ thông tin căn hộ (số phòng, diện tích, chủ hộ, tổng nhân khẩu), bảng thành viên cùng hộ gia đình, lịch sử biến động cư trú của hộ ở màn hình chính, kèm trang đổi mật khẩu.
 
-## 1. Lưu và xem danh mục căn hộ
+> **Bảo mật đăng nhập:** Nếu nhập sai mật khẩu 5 lần liên tiếp, tài khoản sẽ tự động tạm khóa 5 phút để chống dò mật khẩu. Quản trị viên hoặc BQT có thể bấm **Đặt lại MK** để mở khóa và cấp lại mật khẩu mặc định (`123456`) ngay lập tức.
+
+## 1. Lưu, xem và sửa nhanh danh mục căn hộ
 
 Chức năng này nằm ngay tại **Màn hình chính** (dành cho Quản trị và BQT). Bạn nên nhập căn hộ trước, vì bước thêm chủ hộ và nhân khẩu sau đó sẽ lấy danh sách từ đây.
 
 1. Nhập **Số phòng** (ví dụ `050`, `101`, `12A04`) và **Diện tích (m²)** (bắt buộc lớn hơn 0).
 2. Bấm **Lưu**.
 
-Căn hộ vừa tạo sẽ hiện ngay trong bảng **Danh mục căn hộ** bên dưới. Số phòng không được trùng nhau; nếu nhập lại số phòng đã có, web sẽ báo lỗi và không ghi đè.
+Căn hộ vừa tạo sẽ hiện ngay trong bảng **Danh mục căn hộ** bên dưới. Số phòng không được trùng nhau; nếu nhập lại số phòng đã có, web sẽ báo lỗi và không ghi đè. Khi cần chỉnh lại số phòng hoặc diện tích nhập nhầm, bấm nút **Sửa** ngay trên dòng căn hộ đó, chỉnh trực tiếp rồi bấm **Lưu**. Nếu tạo nhầm một căn hộ trống (chưa có nhân khẩu), bấm nút **Xóa** rồi bấm **Xác nhận** để xóa bỏ (hệ thống tự chặn xóa nếu căn hộ đang có nhân khẩu).
 
 ## 2. Quản lý hộ và nhân khẩu
 
-Chọn mục **Hộ và nhân khẩu** trên thanh menu. Màn hình này gom 4 thao tác chính: thêm nhân khẩu, xuất Excel, tra cứu và cập nhật tình trạng cư trú.
+Chọn mục **Hộ và nhân khẩu** trên thanh menu. Màn hình này gom gọn các thao tác: thêm nhân khẩu, sửa nhanh tại chỗ, đổi chủ hộ 1-click, xuất Excel, tra cứu và cập nhật tình trạng cư trú.
 
 ### Thêm chủ hộ và thành viên
 
 1. Chọn căn hộ ở danh sách thả xuống.
-2. Nhập **Họ và tên** (tối thiểu 2 ký tự), chọn **Ngày sinh** (không được chọn ngày trong tương lai) và **Quan hệ với chủ hộ** (`Chủ hộ`, `Vợ/chồng`, `Con`, `Cha/mẹ`, `Anh/chị/em`, `Khác`).
+2. Nhập **Họ và tên** (tối thiểu 2 ký tự), chọn **Ngày sinh** (không được chọn ngày trong tương lai), nhập **Số CCCD/CMND** (9 hoặc 12 chữ số, tùy chọn đối với trẻ em) và chọn **Quan hệ với chủ hộ** (`Chủ hộ`, `Vợ/chồng`, `Con`, `Cha/mẹ`, `Anh/chị/em`, `Khác`).
 3. Bấm **Thêm nhân khẩu**.
 
 Cần chú ý thứ tự nhập: mỗi căn hộ phải có **Chủ hộ** trước rồi mới thêm được các thành viên khác, và một căn hộ chỉ có duy nhất một chủ hộ. Sau khi bạn thêm xong chủ hộ, ô quan hệ sẽ tự chuyển sang `Con` để tiện nhập tiếp các thành viên còn lại.
+
+### Sửa nhanh, Xóa nhân khẩu nhập nhầm và Đổi chủ hộ 1-click
+
+- **Sửa nhanh tại chỗ:** Nếu nhập nhầm họ tên, ngày sinh, số CCCD hoặc quan hệ, bấm nút **Sửa** ngay trên dòng của nhân khẩu đó trong bảng, chỉnh trực tiếp trên dòng rồi bấm **Lưu**.
+- **Đổi chủ hộ 1-click:** Khi chủ hộ cũ chuyển đi hoặc muốn chuyển quyền chủ hộ cho thành viên khác trong cùng căn hộ, chỉ cần bấm nút **Đặt chủ hộ** ngay trên dòng của thành viên mới. Hệ thống sẽ tự động chuyển người đó thành `Chủ hộ` và cập nhật chủ hộ cũ thành thành viên trong cùng một giao dịch.
+- **Xóa nhân khẩu nhập thừa:** Bấm nút **Xóa** rồi bấm **Xác nhận** ngay trên dòng nhân khẩu. Nếu người đó là `Chủ hộ` và trong hộ vẫn còn các thành viên khác, hệ thống sẽ nhắc bạn bấm **Đặt chủ hộ** cho thành viên khác trước khi xóa chủ hộ cũ.
 
 ### Tra cứu theo số phòng hoặc họ tên
 
@@ -59,14 +67,13 @@ Vài điểm cần biết khi xuất file:
 - Số phòng có số 0 ở đầu (ví dụ `050`) được giữ nguyên dạng chữ, ngày sinh định dạng `dd/mm/yyyy`.
 - Nếu không có nhân khẩu nào ở trạng thái đã chọn, web sẽ báo lỗi thay vì tải về một file trắng.
 
-## 3. Cấp tài khoản cho cư dân
+## 3. Cư dân tự đăng ký và BQT duyệt tài khoản cư dân
 
-Vào mục **Cấp tài khoản cư dân** (cả Quản trị và BQT đều thao tác được):
+Để giảm thao tác nhập liệu thủ công cho Ban quản trị, hệ thống hỗ trợ quy trình rút gọn:
 
-1. Ở ô **Nhân khẩu**, chọn người cần cấp tài khoản. Danh sách này chỉ hiện những nhân khẩu chưa có tài khoản đăng nhập.
-2. Nhập **Tên đăng nhập** và **Mật khẩu khởi tạo** (tối thiểu 6 ký tự), rồi bấm **Cấp**.
-
-Các tài khoản đã cấp hiện ở bảng bên dưới. Khi cần thu hồi, bấm **Xóa** rồi bấm **Xác nhận**. Thao tác này chỉ xóa tài khoản đăng nhập của cư dân đó, hồ sơ nhân khẩu vẫn giữ nguyên.
+1. **Cư dân tự đăng ký tại trang Đăng nhập:** Bấm nút **Cư dân tự đăng ký tài khoản**, nhập **Số phòng**, **Họ và tên nhân khẩu** (khớp với hồ sơ đã khai báo), tự chọn **Tên đăng nhập** và **Mật khẩu** rồi bấm **Gửi yêu cầu duyệt**.
+2. **BQT duyệt 1-click:** Vào mục **Cấp tài khoản cư dân**, các yêu cầu mới sẽ nằm ở bảng **Yêu cầu cư dân tự đăng ký chờ duyệt** ngay đầu trang. BQT chỉ cần bấm **Duyệt** (hoặc **Từ chối**) bằng 1 cú nhấp chuột.
+3. **Chủ động cấp nhanh hoặc Đặt lại mật khẩu:** BQT vẫn có thể mở mục *BQT chủ động cấp nhanh tài khoản cư dân* để tạo trực tiếp, hoặc bấm **Đặt lại MK** ở bảng tài khoản đang hoạt động để reset mật khẩu cư dân về `123456` khi cư dân quên mật khẩu.
 
 ## 4. Cấp tài khoản cho thành viên BQT (chỉ Quản trị viên)
 
@@ -75,7 +82,7 @@ Các tài khoản đã cấp hiện ở bảng bên dưới. Khi cần thu hồi
 1. Nhập **Tên đăng nhập**, **Họ tên** và **Mật khẩu khởi tạo** (tối thiểu 6 ký tự).
 2. Bấm **Cấp**. Tài khoản mới tạo sẽ có vai trò là Thành viên BQT.
 
-Bảng **Tài khoản đã cấp** bên dưới cho phép xóa các tài khoản khác (bấm **Xóa** rồi **Xác nhận**). Bạn không thể tự xóa tài khoản mình đang dùng để đăng nhập.
+Bảng **Tài khoản đã cấp** bên dưới cho phép bấm **Đặt lại MK** (reset mật khẩu về `123456` và mở khóa đăng nhập) hoặc xóa các tài khoản khác (bấm **Xóa** rồi **Xác nhận**). Bạn không thể tự xóa tài khoản mình đang dùng để đăng nhập.
 
 ## 5. Cập nhật hồ sơ và đổi mật khẩu
 

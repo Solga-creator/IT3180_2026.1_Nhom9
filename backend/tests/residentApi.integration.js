@@ -69,7 +69,7 @@ test("US-002..004 API: Thêm chủ hộ, cập nhật tạm vắng và tìm ki�
       if (/INSERT INTO households/i.test(sql)) return [{ insertId: 10 }, []];
       if (/INSERT INTO residents/i.test(sql)) return [{ insertId: 100 }, []];
       if (/UPDATE households/i.test(sql)) return [{ affectedRows: 1 }, []];
-      if (/SELECT\s+id,\s*household_id\s+FROM\s+residents/i.test(sql)) return [[{ id: 100, household_id: 10 }], []];
+      if (/SELECT\s+id,\s*household_id[\s\S]*FROM\s+residents/i.test(sql)) return [[{ id: 100, household_id: 10, status_start_date: null }], []];
       if (/INSERT INTO residency_events/i.test(sql)) {
         currentStatus = params[1];
         events.unshift({
@@ -133,7 +133,7 @@ test("US-002..004 API: Thêm chủ hộ, cập nhật tạm vắng và tìm ki�
       body: JSON.stringify({
         status: "Tạm vắng",
         startDate: "2026-11-06",
-        endDate: "2026-11-20",
+        endDate: "2026-12-20",
       }),
     });
     assert.equal(eventRes.status, 201);

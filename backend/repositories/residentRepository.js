@@ -1,4 +1,5 @@
 import { pool } from "../config/database.js";
+import { getBusinessDate } from "../../shared/businessDate.mjs";
 
 function mapEvent(row) {
   return {
@@ -10,7 +11,72 @@ function mapEvent(row) {
   };
 }
 
-function mapResident(row, events) {
+export function resolveEffectiveResidencyStatus(
+  row,
+  events = [],
+  referenceDate = getBusinessDate(),
+) {
+  const fallback = {
+    currentStatus: row?.current_status || "Thường trú",
+    statusStartDate: row?.status_start_date || null,
+    statusEndDate: row?.status_end_date || null,
+  };
+
+  if (Array.isArray(events) && events.length > 0) {
+    const activeEvent = events.find((ev) => {
+      const start = String(ev.start_date || ev.startDate || "");
+      const end = ev.end_date ?? ev.endDate ?? null;
+      return start && start <= referenceDate && (!end || String(end) >= referenceDate);
+    });
+    if (activeEvent) {
+      return {
+        currentStatus: activeEvent.status,
+        statusStartDate: activeEvent.start_date || activeEvent.startDate || null,
+        statusEndDate: activeEvent.end_date ?? activeEvent.endDate ?? null,
+      };
+    }
+
+    const pastEvents = events.filter((ev) => {
+      const start = String(ev.start_date || ev.startDate || "");
+      return start && start <= referenceDate;
+    });
+    if (pastEvents.length > 0) {
+      const baseEvent = pastEvents.find((ev) =>
+        ["Thường trú", "Chuyển đến", "Chuyển đi"].includes(ev.status),
+      );
+      if (baseEvent) {
+        return {
+          currentStatus: baseEvent.status,
+          statusStartDate: baseEvent.start_date || baseEvent.startDate || null,
+          statusEndDate: baseEvent.end_date ?? baseEvent.endDate ?? null,
+        };
+      }
+      return {
+        currentStatus: "Thường trú",
+        statusStartDate: null,
+        statusEndDate: null,
+      };
+    }
+    return fallback;
+  }
+
+  if (
+    fallback.statusEndDate &&
+    String(fallback.statusEndDate) < referenceDate &&
+    (fallback.currentStatus === "Tạm vắng" || fallback.currentStatus === "Tạm trú")
+  ) {
+    return {
+      currentStatus: "Thường trú",
+      statusStartDate: null,
+      statusEndDate: null,
+    };
+  }
+
+  return fallback;
+}
+
+function mapResident(row, events, { includeHistory = true } = {}) {
+  const effective = resolveEffectiveResidencyStatus(row, events);
   return {
     id: row.id,
     householdId: row.household_id,
@@ -18,12 +84,18 @@ function mapResident(row, events) {
     roomNumber: row.room_number,
     fullName: row.full_name,
     birthDate: row.birth_date,
+    cccd: row.cccd || "",
     relationship: row.relationship_to_head,
-    currentStatus: row.current_status,
-    statusStartDate: row.status_start_date,
-    statusEndDate: row.status_end_date,
+    householdHeadId: row.head_resident_id || null,
+    householdHeadName:
+      row.head_full_name ||
+      (row.relationship_to_head === "Chủ hộ" ? row.full_name : null),
+    currentStatus: effective.currentStatus,
+    statusStartDate: effective.statusStartDate,
+    statusEndDate: effective.statusEndDate,
     createdAt: row.created_at,
-    residencyHistory: events.map(mapEvent),
+    historyCount: events.length,
+    residencyHistory: includeHistory ? events.map(mapEvent) : [],
   };
 }
 
@@ -33,9 +105,12 @@ async function getResidentById(id, executor = pool) {
       r.id,
       r.household_id,
       h.apartment_id,
+      h.head_resident_id,
+      head_r.full_name AS head_full_name,
       a.room_number,
       r.full_name,
       DATE_FORMAT(r.birth_date, '%Y-%m-%d') AS birth_date,
+      r.cccd,
       r.relationship_to_head,
       r.current_status,
       DATE_FORMAT(r.status_start_date, '%Y-%m-%d') AS status_start_date,
@@ -44,6 +119,7 @@ async function getResidentById(id, executor = pool) {
      FROM residents r
      JOIN households h ON h.id = r.household_id
      JOIN apartments a ON a.id = h.apartment_id
+     LEFT JOIN residents head_r ON head_r.id = h.head_resident_id
      WHERE r.id = ?`,
     [id],
   );
@@ -52,6 +128,11 @@ async function getResidentById(id, executor = pool) {
 
   const events = await getResidencyEvents(id, executor);
   return mapResident(rows[0], events);
+}
+
+export async function getResidentHistoryById(residentId) {
+  const events = await getResidencyEvents(residentId);
+  return events.map(mapEvent);
 }
 
 async function getResidencyEvents(residentId, executor = pool) {
@@ -70,20 +151,63 @@ async function getResidencyEvents(residentId, executor = pool) {
   return rows;
 }
 
-export async function listResidents(searchInput = "") {
+export function isResidencyEventEffective(
+  event,
+  currentStartDate = null,
+  referenceDate = getBusinessDate(),
+) {
+  const startDate = String(event?.startDate || "");
+  const endDate = event?.endDate ? String(event.endDate) : null;
+  if (!startDate || startDate > referenceDate) {
+    return false;
+  }
+  if (endDate && endDate < referenceDate) {
+    return false;
+  }
+  if (currentStartDate && startDate < String(currentStartDate)) {
+    return false;
+  }
+  return true;
+}
+
+export async function listResidents(searchInput = "", options = {}) {
   const search = String(searchInput || "").trim();
-  const values = search ? [`%${search}%`, `%${search}%`] : [];
-  const searchClause = search
-    ? "WHERE a.room_number LIKE ? OR r.full_name LIKE ?"
-    : "";
+  const status = String(options?.status || "").trim();
+  const apartmentId = Number(options?.apartmentId) || 0;
+  const includeHistory = options?.includeHistory !== false;
+
+  const conditions = [];
+  const values = [];
+  if (search) {
+    conditions.push(
+      status || apartmentId
+        ? "(a.room_number LIKE ? OR r.full_name LIKE ?)"
+        : "a.room_number LIKE ? OR r.full_name LIKE ?",
+    );
+    values.push(`%${search}%`, `%${search}%`);
+  }
+  if (status) {
+    conditions.push("r.current_status = ?");
+    values.push(status);
+  }
+  if (apartmentId > 0) {
+    conditions.push("a.id = ?");
+    values.push(apartmentId);
+  }
+  const searchClause =
+    conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+
   const [rows] = await pool.query(
     `SELECT
       r.id,
       r.household_id,
       h.apartment_id,
+      h.head_resident_id,
+      head_r.full_name AS head_full_name,
       a.room_number,
       r.full_name,
       DATE_FORMAT(r.birth_date, '%Y-%m-%d') AS birth_date,
+      r.cccd,
       r.relationship_to_head,
       r.current_status,
       DATE_FORMAT(r.status_start_date, '%Y-%m-%d') AS status_start_date,
@@ -92,6 +216,7 @@ export async function listResidents(searchInput = "") {
      FROM residents r
      JOIN households h ON h.id = r.household_id
      JOIN apartments a ON a.id = h.apartment_id
+     LEFT JOIN residents head_r ON head_r.id = h.head_resident_id
      ${searchClause}
      ORDER BY a.room_number ASC, r.id ASC`,
     values,
@@ -123,26 +248,25 @@ export async function listResidents(searchInput = "") {
   }
 
   return rows.map((row) =>
-    mapResident(row, eventsByResident.get(row.id) || []),
+    mapResident(row, eventsByResident.get(row.id) || [], { includeHistory }),
   );
 }
 
-export async function listResidentsByStatus(status) {
-  const [rows] = await pool.query(
-    `SELECT
-      a.room_number,
-      r.full_name,
-      DATE_FORMAT(r.birth_date, '%Y-%m-%d') AS birth_date,
-      r.relationship_to_head,
-      r.current_status
-     FROM residents r
-     JOIN households h ON h.id = r.household_id
-     JOIN apartments a ON a.id = h.apartment_id
-     WHERE r.current_status = ?
-     ORDER BY a.room_number ASC, r.id ASC`,
-    [status],
-  );
-  return rows;
+export async function listResidentsByStatus(status, searchInput = "", options = {}) {
+  // Resolve dates through the same path as the on-screen resident list before filtering.
+  const residents = await listResidents(searchInput, {
+    apartmentId: options.apartmentId,
+    includeHistory: false,
+  });
+  return residents
+    .filter((resident) => resident.currentStatus === status)
+    .map((resident) => ({
+      room_number: resident.roomNumber,
+      full_name: resident.fullName,
+      birth_date: resident.birthDate,
+      relationship_to_head: resident.relationship,
+      current_status: resident.currentStatus,
+    }));
 }
 
 export async function createResident(input) {
@@ -193,13 +317,15 @@ export async function createResident(input) {
         household_id,
         full_name,
         birth_date,
+        cccd,
         relationship_to_head
       )
-      VALUES (?, ?, ?, ?)`,
+      VALUES (?, ?, ?, ?, ?)`,
       [
         householdId,
         input.fullName,
         input.birthDate,
+        input.cccd || null,
         input.relationship,
       ],
     );
@@ -233,7 +359,8 @@ export async function createResidencyEvent(residentId, event, userId) {
     await connection.beginTransaction();
 
     const [residents] = await connection.query(
-      `SELECT id, household_id
+      `SELECT id, household_id,
+              DATE_FORMAT(status_start_date, '%Y-%m-%d') AS status_start_date
        FROM residents
        WHERE id = ?
        FOR UPDATE`,
@@ -244,6 +371,7 @@ export async function createResidencyEvent(residentId, event, userId) {
       return null;
     }
 
+    const normalizedEndDate = event.endDate ? event.endDate : null;
     await connection.query(
       `INSERT INTO residency_events (
         resident_id,
@@ -253,20 +381,195 @@ export async function createResidencyEvent(residentId, event, userId) {
         recorded_by
       )
       VALUES (?, ?, ?, ?, ?)`,
-      [residentId, event.status, event.startDate, event.endDate, userId],
+      [residentId, event.status, event.startDate, normalizedEndDate, userId],
     );
-    await connection.query(
-      `UPDATE residents
-       SET current_status = ?,
-           status_start_date = ?,
-           status_end_date = ?
-       WHERE id = ?`,
-      [event.status, event.startDate, event.endDate, residentId],
+
+    const effective = isResidencyEventEffective(
+      { startDate: event.startDate, endDate: normalizedEndDate },
+      residents[0].status_start_date || null,
     );
+    if (effective) {
+      await connection.query(
+        `UPDATE residents
+         SET current_status = ?,
+             status_start_date = ?,
+             status_end_date = ?
+         WHERE id = ?`,
+        [event.status, event.startDate, normalizedEndDate, residentId],
+      );
+      if (event.status === "Chuyển đi") {
+        await connection.query(
+          `UPDATE users
+           SET token_version = COALESCE(token_version, 0) + 1
+           WHERE resident_id = ?
+             AND role = 'RESIDENT'`,
+          [residentId],
+        );
+      }
+    }
 
     const resident = await getResidentById(residentId, connection);
     await connection.commit();
     return resident;
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
+export async function updateResidentById(residentId, input) {
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    const [residents] = await connection.query(
+      `SELECT id, household_id, relationship_to_head
+       FROM residents
+       WHERE id = ?
+       FOR UPDATE`,
+      [residentId],
+    );
+    if (!residents[0]) {
+      await connection.rollback();
+      return { reason: "RESIDENT_NOT_FOUND" };
+    }
+
+    const current = residents[0];
+    const [households] = await connection.query(
+      `SELECT id, head_resident_id
+       FROM households
+       WHERE id = ?
+       FOR UPDATE`,
+      [current.household_id],
+    );
+    const household = households[0];
+
+    if (
+      current.relationship_to_head === "Chủ hộ" &&
+      input.relationship !== "Chủ hộ" &&
+      household?.head_resident_id === residentId
+    ) {
+      await connection.rollback();
+      return { reason: "CANNOT_DEMOTE_HEAD_DIRECTLY" };
+    }
+
+    if (input.relationship === "Chủ hộ" && household && household.head_resident_id !== residentId) {
+      if (household.head_resident_id) {
+        await connection.query(
+          `UPDATE residents
+           SET relationship_to_head = 'Khác'
+           WHERE id = ?`,
+          [household.head_resident_id],
+        );
+      }
+      await connection.query(
+        `UPDATE households
+         SET head_resident_id = ?
+         WHERE id = ?`,
+        [residentId, household.id],
+      );
+    }
+
+    await connection.query(
+      `UPDATE residents
+       SET full_name = ?,
+           birth_date = ?,
+           cccd = ?,
+           relationship_to_head = ?
+       WHERE id = ?`,
+      [
+        input.fullName,
+        input.birthDate,
+        input.cccd || null,
+        input.relationship,
+        residentId,
+      ],
+    );
+
+    const resident = await getResidentById(residentId, connection);
+    await connection.commit();
+    return { resident };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
+export async function deleteResidentById(residentId) {
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    const [residents] = await connection.query(
+      `SELECT id, household_id, full_name, relationship_to_head
+       FROM residents
+       WHERE id = ?
+       FOR UPDATE`,
+      [residentId],
+    );
+    if (!residents[0]) {
+      await connection.rollback();
+      return { reason: "RESIDENT_NOT_FOUND" };
+    }
+
+    const current = residents[0];
+    const [households] = await connection.query(
+      `SELECT id, head_resident_id
+       FROM households
+       WHERE id = ?
+       FOR UPDATE`,
+      [current.household_id],
+    );
+    const household = households[0];
+
+    const [countRows] = await connection.query(
+      `SELECT COUNT(*) AS n
+       FROM residents
+       WHERE household_id = ?`,
+      [current.household_id],
+    );
+    const memberCount = Number(countRows[0]?.n || 0);
+
+    if (
+      (current.relationship_to_head === "Chủ hộ" ||
+        household?.head_resident_id === residentId) &&
+      memberCount > 1
+    ) {
+      await connection.rollback();
+      return { reason: "CANNOT_DELETE_HEAD_WITH_MEMBERS" };
+    }
+
+    if (memberCount <= 1 && household) {
+      await connection.query(
+        `UPDATE households
+         SET head_resident_id = NULL
+         WHERE id = ?`,
+        [household.id],
+      );
+      await connection.query(
+        `DELETE FROM residents
+         WHERE id = ?`,
+        [residentId],
+      );
+      await connection.query(
+        `DELETE FROM households
+         WHERE id = ?`,
+        [household.id],
+      );
+    } else {
+      await connection.query(
+        `DELETE FROM residents
+         WHERE id = ?`,
+        [residentId],
+      );
+    }
+
+    await connection.commit();
+    return { fullName: current.full_name };
   } catch (error) {
     await connection.rollback();
     throw error;

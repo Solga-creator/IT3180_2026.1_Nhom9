@@ -1,3 +1,5 @@
+import { getBusinessDate } from "../../shared/businessDate.mjs";
+
 export const RESIDENT_RELATIONSHIPS = [
   "Chủ hộ",
   "Vợ/chồng",
@@ -24,13 +26,14 @@ function isValidDate(value) {
   return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
 }
 
-export function validateResidentInput(input) {
+export function validateResidentInput(input, { requireApartment = true } = {}) {
   const apartmentId = Number(input?.apartmentId);
   const fullName = String(input?.fullName || "").trim();
   const birthDate = String(input?.birthDate || "");
+  const cccd = String(input?.cccd || "").trim();
   const relationship = String(input?.relationship || "").trim();
 
-  if (!Number.isInteger(apartmentId) || apartmentId <= 0) {
+  if (requireApartment && (!Number.isInteger(apartmentId) || apartmentId <= 0)) {
     return "Chọn căn hộ hợp lệ.";
   }
   if (fullName.length < 2 || fullName.length > 120) {
@@ -39,8 +42,11 @@ export function validateResidentInput(input) {
   if (!isValidDate(birthDate)) {
     return "Ngày sinh không hợp lệ.";
   }
-  if (birthDate > new Date().toISOString().slice(0, 10)) {
+  if (birthDate > getBusinessDate()) {
     return "Ngày sinh không thể ở tương lai.";
+  }
+  if (cccd && !/^(\d{9}|\d{12})$/.test(cccd)) {
+    return "Số CCCD/CMND phải gồm 9 hoặc 12 chữ số.";
   }
   if (!RESIDENT_RELATIONSHIPS.includes(relationship)) {
     return "Chọn quan hệ với chủ hộ hợp lệ.";
@@ -51,16 +57,19 @@ export function validateResidentInput(input) {
 
 export function validateResidencyEvent(input) {
   const status = String(input?.status || "").trim();
-  const startDate = String(input?.startDate || "");
-  const endDate = String(input?.endDate || "");
+  const startDate = String(input?.startDate || "").trim();
+  const endDate =
+    input?.endDate === null || input?.endDate === undefined
+      ? ""
+      : String(input.endDate).trim();
 
   if (!RESIDENCY_STATUSES.includes(status)) {
     return "Chọn trạng thái cư trú hợp lệ.";
   }
-  if (!isValidDate(startDate) || !isValidDate(endDate)) {
+  if (!isValidDate(startDate) || (endDate && !isValidDate(endDate))) {
     return "Ngày bắt đầu và ngày kết thúc không hợp lệ.";
   }
-  if (startDate > endDate) {
+  if (endDate && startDate > endDate) {
     return "Ngày bắt đầu phải trước hoặc bằng ngày kết thúc.";
   }
 

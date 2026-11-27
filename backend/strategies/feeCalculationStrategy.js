@@ -1,4 +1,4 @@
-import { AppError } from "../utils/errors.js";
+import { AppError } from "../helpers/AppError.js";
 
 /**
  * Base Interface & Concrete Strategies cho bài toán tính phí theo diện tích căn hộ (apartments.area).

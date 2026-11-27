@@ -21,12 +21,12 @@ test("US-005: thông báo khi không có nhân khẩu phù hợp", async (t) => 
 
 test("US-005: Excel giữ tiếng Việt, số phòng, kiểu ngày và dữ liệu dạng văn bản", async (t) => {
   t.mock.method(pool, "query", async (sql, params) => {
-    assert.match(sql, /WHERE r.current_status = \?/);
-    assert.doesNotMatch(sql, /JOIN residency_events/);
-    assert.deepEqual(params, ["Tạm vắng"]);
+    if (/FROM residency_events/.test(sql)) return [[], []];
+    assert.doesNotMatch(sql, /WHERE r.current_status = \?/);
+    assert.deepEqual(params, []);
     return [[
-      { room_number: "050", full_name: "Đặng Gia Bảo", birth_date: "2006-07-29", relationship_to_head: "Con", current_status: "Tạm vắng" },
-      { room_number: "101", full_name: "=HYPERLINK(\"https://example.com\")", birth_date: "2000-01-01", relationship_to_head: "Chủ hộ", current_status: "Tạm vắng" },
+      { id: 1, room_number: "050", full_name: "Đặng Gia Bảo", birth_date: "2006-07-29", relationship_to_head: "Con", current_status: "Tạm vắng" },
+      { id: 2, room_number: "101", full_name: "=HYPERLINK(\"https://example.com\")", birth_date: "2000-01-01", relationship_to_head: "Chủ hộ", current_status: "Tạm vắng" },
     ], []];
   });
   const workbook = new ExcelJS.Workbook();

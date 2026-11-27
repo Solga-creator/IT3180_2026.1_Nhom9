@@ -24,6 +24,11 @@ export async function migrate() {
       password_hash VARCHAR(255) NOT NULL,
       role ENUM('ADMIN', 'BQT', 'RESIDENT') NOT NULL DEFAULT 'BQT',
       resident_id INT NULL,
+      account_status ENUM('ACTIVE', 'PENDING') NOT NULL DEFAULT 'ACTIVE',
+      failed_login_attempts INT NOT NULL DEFAULT 0,
+      locked_until TIMESTAMP NULL,
+      token_version INT NOT NULL DEFAULT 0,
+      must_change_password TINYINT(1) NOT NULL DEFAULT 0,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
@@ -61,6 +66,66 @@ export async function migrate() {
   if (residentColumn[0].n === 0) {
     await pool.query(
       "ALTER TABLE users ADD COLUMN resident_id INT NULL AFTER role",
+    );
+  }
+  const [statusColumn] = await pool.query(
+    `SELECT COUNT(*) AS n
+     FROM information_schema.columns
+     WHERE table_schema = DATABASE()
+       AND table_name = 'users'
+       AND column_name = 'account_status'`,
+  );
+  if (statusColumn[0].n === 0) {
+    await pool.query(
+      "ALTER TABLE users ADD COLUMN account_status ENUM('ACTIVE', 'PENDING') NOT NULL DEFAULT 'ACTIVE' AFTER resident_id",
+    );
+  }
+  const [failedAttemptsColumn] = await pool.query(
+    `SELECT COUNT(*) AS n
+     FROM information_schema.columns
+     WHERE table_schema = DATABASE()
+       AND table_name = 'users'
+       AND column_name = 'failed_login_attempts'`,
+  );
+  if (failedAttemptsColumn[0].n === 0) {
+    await pool.query(
+      "ALTER TABLE users ADD COLUMN failed_login_attempts INT NOT NULL DEFAULT 0 AFTER account_status",
+    );
+  }
+  const [lockedUntilColumn] = await pool.query(
+    `SELECT COUNT(*) AS n
+     FROM information_schema.columns
+     WHERE table_schema = DATABASE()
+       AND table_name = 'users'
+       AND column_name = 'locked_until'`,
+  );
+  if (lockedUntilColumn[0].n === 0) {
+    await pool.query(
+      "ALTER TABLE users ADD COLUMN locked_until TIMESTAMP NULL AFTER failed_login_attempts",
+    );
+  }
+  const [tokenVersionColumn] = await pool.query(
+    `SELECT COUNT(*) AS n
+     FROM information_schema.columns
+     WHERE table_schema = DATABASE()
+       AND table_name = 'users'
+       AND column_name = 'token_version'`,
+  );
+  if (tokenVersionColumn[0].n === 0) {
+    await pool.query(
+      "ALTER TABLE users ADD COLUMN token_version INT NOT NULL DEFAULT 0 AFTER locked_until",
+    );
+  }
+  const [mustChangePwColumn] = await pool.query(
+    `SELECT COUNT(*) AS n
+     FROM information_schema.columns
+     WHERE table_schema = DATABASE()
+       AND table_name = 'users'
+       AND column_name = 'must_change_password'`,
+  );
+  if (mustChangePwColumn[0].n === 0) {
+    await pool.query(
+      "ALTER TABLE users ADD COLUMN must_change_password TINYINT(1) NOT NULL DEFAULT 0 AFTER token_version",
     );
   }
   const [residentKey] = await pool.query(
@@ -107,6 +172,7 @@ export async function migrate() {
       household_id INT NOT NULL,
       full_name VARCHAR(120) NOT NULL,
       birth_date DATE NOT NULL,
+      cccd VARCHAR(20) NULL,
       relationship_to_head VARCHAR(30) NOT NULL,
       current_status VARCHAR(30) NOT NULL DEFAULT 'Thường trú',
       status_start_date DATE NULL,
@@ -119,6 +185,19 @@ export async function migrate() {
         ON DELETE CASCADE
     )
   `);
+
+  const [cccdColumn] = await pool.query(
+    `SELECT COUNT(*) AS n
+     FROM information_schema.columns
+     WHERE table_schema = DATABASE()
+       AND table_name = 'residents'
+       AND column_name = 'cccd'`,
+  );
+  if (cccdColumn[0].n === 0) {
+    await pool.query(
+      "ALTER TABLE residents ADD COLUMN cccd VARCHAR(20) NULL AFTER birth_date",
+    );
+  }
 
   const [headReference] = await pool.query(
     `SELECT COUNT(*) AS n
@@ -142,7 +221,7 @@ export async function migrate() {
       resident_id INT NOT NULL,
       status VARCHAR(30) NOT NULL,
       start_date DATE NOT NULL,
-      end_date DATE NOT NULL,
+      end_date DATE NULL,
       recorded_by INT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       INDEX idx_residency_events_resident (resident_id, start_date, id),
@@ -154,6 +233,18 @@ export async function migrate() {
         ON DELETE SET NULL
     )
   `);
+  const [endDateCol] = await pool.query(
+    `SELECT IS_NULLABLE AS isNullable
+     FROM information_schema.columns
+     WHERE table_schema = DATABASE()
+       AND table_name = 'residency_events'
+       AND column_name = 'end_date'`,
+  );
+  if (endDateCol[0] && endDateCol[0].isNullable === "NO") {
+    await pool.query(
+      "ALTER TABLE residency_events MODIFY end_date DATE NULL",
+    );
+  }
   const [residentAccountFk] = await pool.query(
     `SELECT COUNT(*) AS n
      FROM information_schema.referential_constraints

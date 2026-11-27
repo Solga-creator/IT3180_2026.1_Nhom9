@@ -1,8 +1,11 @@
 import {
+  countResidentsByApartmentId,
   createApartment,
+  deleteApartmentById,
   findApartmentById,
   findApartmentByRoomNumber,
   listApartments,
+  updateApartmentById,
 } from "../repositories/apartmentRepository.js";
 import { AppError } from "../helpers/AppError.js";
 import { debug } from "../helpers/debug.js";
@@ -35,5 +38,59 @@ export async function saveApartment(input) {
 
 export async function getApartments() {
   return listApartments();
+}
+
+export async function editApartment(idInput, input) {
+  const id = Number(idInput);
+  if (!Number.isInteger(id) || id <= 0) {
+    throw new AppError(400, "Căn hộ không hợp lệ.");
+  }
+
+  const roomNumber = String(input?.roomNumber ?? "").trim();
+  const areaRaw = input?.area;
+
+  const validationError = validateApartmentInput(roomNumber, areaRaw);
+  if (validationError) {
+    throw new AppError(400, validationError);
+  }
+
+  const current = await findApartmentById(id);
+  if (!current) {
+    throw new AppError(404, "Không tìm thấy căn hộ.");
+  }
+
+  const existing = await findApartmentByRoomNumber(roomNumber);
+  if (existing && existing.id !== id) {
+    throw new AppError(409, `Số phòng "${roomNumber}" đã tồn tại trong danh mục.`);
+  }
+
+  const area = Number(areaRaw);
+  const updated = await updateApartmentById(id, { roomNumber, area });
+  debug("updated apartment", roomNumber, `${area} m²`);
+  return updated;
+}
+
+export async function removeApartment(idInput) {
+  const id = Number(idInput);
+  if (!Number.isInteger(id) || id <= 0) {
+    throw new AppError(400, "Căn hộ không hợp lệ.");
+  }
+
+  const current = await findApartmentById(id);
+  if (!current) {
+    throw new AppError(404, "Không tìm thấy căn hộ.");
+  }
+
+  const residentCount = await countResidentsByApartmentId(id);
+  if (residentCount > 0) {
+    throw new AppError(
+      400,
+      "Không thể xóa căn hộ đang có nhân khẩu. Hãy xóa hoặc chuyển nhân khẩu trước.",
+    );
+  }
+
+  await deleteApartmentById(id);
+  debug("deleted apartment", current.roomNumber);
+  return current.roomNumber;
 }
 

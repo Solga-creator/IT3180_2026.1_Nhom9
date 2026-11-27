@@ -26,22 +26,31 @@ export default function AppLayout() {
       </header>
       <nav className="nav">
         <NavLink to="/" end>
-          Màn hình chính
+          {user.role === "RESIDENT" ? "Căn hộ của tôi" : "Căn hộ"}
         </NavLink>
         {user.role === "RESIDENT" ? (
           <NavLink to="/profile">Đổi mật khẩu</NavLink>
         ) : (
           <>
             <NavLink to="/residents">Hộ và nhân khẩu</NavLink>
-            <NavLink to="/resident-accounts">Cấp tài khoản cư dân</NavLink>
+            <NavLink to="/resident-accounts">Tài khoản cư dân</NavLink>
             <NavLink to="/profile">Hồ sơ cá nhân</NavLink>
             {user.role === "ADMIN" && (
-              <NavLink to="/accounts">Cấp tài khoản</NavLink>
+              <NavLink to="/accounts">Tài khoản BQT</NavLink>
             )}
           </>
         )}
       </nav>
       <main className="main">
+        {user.mustChangePassword && (
+          <p className="error" role="alert">
+            Bạn đang đăng nhập bằng mật khẩu tạm thời sau khi khôi phục. Vui lòng vào mục{" "}
+            <NavLink to="/profile">
+              <strong>Đổi mật khẩu</strong>
+            </NavLink>{" "}
+            để đặt mật khẩu mới.
+          </p>
+        )}
         <Outlet />
       </main>
     </div>

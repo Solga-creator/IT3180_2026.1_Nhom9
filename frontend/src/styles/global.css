@@ -124,9 +124,21 @@ button:disabled {
 }
 
 button.link {
-  padding: 0.2rem 0.55rem;
-  border: 1px solid #9ec4d8;
+  margin-top: 0;
+  padding: 0.25rem 0.6rem;
+  border: 1px solid #7faec7;
+  background: #fff;
+  color: #14344a;
+}
+
+button.link:hover:not(:disabled) {
+  background: #e3eff5;
+}
+
+.top button.link {
+  border-color: #9ec4d8;
   background: transparent;
+  color: #fff;
 }
 
 button.danger {
@@ -137,8 +149,29 @@ button.danger {
 
 .row-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.4rem;
   align-items: center;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(18, 32, 43, 0.45);
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  z-index: 50;
+}
+
+.modal-card {
+  background: #fff;
+  padding: 1.25rem 1.5rem;
+  width: min(480px, 94vw);
+  max-height: 90vh;
+  overflow-y: auto;
+  border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
 }
 
 .search-form {

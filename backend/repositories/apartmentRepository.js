@@ -52,3 +52,34 @@ export async function listApartments() {
   return rows.map(toApartment);
 }
 
+export async function updateApartmentById(id, { roomNumber, area }) {
+  await pool.query(
+    `UPDATE apartments
+     SET room_number = ?,
+         area = ?
+     WHERE id = ?`,
+    [roomNumber, area, id],
+  );
+  return findApartmentById(id);
+}
+
+export async function countResidentsByApartmentId(apartmentId) {
+  const [rows] = await pool.query(
+    `SELECT COUNT(*) AS n
+     FROM residents r
+     JOIN households h ON h.id = r.household_id
+     WHERE h.apartment_id = ?`,
+    [apartmentId],
+  );
+  return Number(rows[0]?.n || 0);
+}
+
+export async function deleteApartmentById(id) {
+  await pool.query(
+    `DELETE FROM apartments
+     WHERE id = ?`,
+    [id],
+  );
+}
+
+

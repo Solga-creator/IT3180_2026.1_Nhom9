@@ -57,12 +57,13 @@ test("US-002 Validation: Họ tên phải từ 2 đến 120 ký tự", () => {
   );
 });
 
-test("US-002 Validation: Ngày sinh không được sai định dạng hoặc ở tương lai", () => {
+test("US-002 Validation: Ngày sinh không được sai định dạng hoặc ở tương lai", (t) => {
+  t.mock.timers.enable({ apis: ["Date"], now: new Date("2026-11-27T18:00:00Z") });
   assert.equal(
     validateResidentInput({ apartmentId: 1, fullName: "Nguyễn Văn A", birthDate: "2026-02-31", relationship: "Chủ hộ" }),
     "Ngày sinh không hợp lệ.",
   );
-  const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+  const tomorrow = "2026-11-29";
   assert.equal(
     validateResidentInput({ apartmentId: 1, fullName: "Nguyễn Văn A", birthDate: tomorrow, relationship: "Chủ hộ" }),
     "Ngày sinh không thể ở tương lai.",
@@ -93,6 +94,10 @@ test("US-004 Validation: Hợp lệ với 5 trạng thái cư trú và khoảng 
     validateResidencyEvent({ status: "Tạm vắng", startDate: "2026-11-06", endDate: "2026-11-06" }),
     null,
   );
+  assert.equal(
+    validateResidencyEvent({ status: "Chuyển đi", startDate: "2026-11-28", endDate: "" }),
+    null,
+  );
 });
 
 test("US-004 Validation: Từ chối trạng thái lạ, ngày không có thật hoặc ngày bắt đầu sau ngày kết thúc", () => {
@@ -107,5 +112,28 @@ test("US-004 Validation: Từ chối trạng thái lạ, ngày không có thật
   assert.equal(
     validateResidencyEvent({ status: "Tạm vắng", startDate: "2026-11-20", endDate: "2026-11-05" }),
     "Ngày bắt đầu phải trước hoặc bằng ngày kết thúc.",
+  );
+});
+
+test("US-002 Validation: Kiểm tra định dạng số CCCD/CMND (rỗng hoặc 9/12 chữ số)", () => {
+  assert.equal(
+    validateResidentInput({
+      apartmentId: 1,
+      fullName: "Nguyễn Văn A",
+      birthDate: "1985-05-15",
+      cccd: "001085012345",
+      relationship: "Chủ hộ",
+    }),
+    null,
+  );
+  assert.equal(
+    validateResidentInput({
+      apartmentId: 1,
+      fullName: "Nguyễn Văn A",
+      birthDate: "1985-05-15",
+      cccd: "12345abc",
+      relationship: "Chủ hộ",
+    }),
+    "Số CCCD/CMND phải gồm 9 hoặc 12 chữ số.",
   );
 });

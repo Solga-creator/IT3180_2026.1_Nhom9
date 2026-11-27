@@ -1,0 +1,173 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Page-1" id="58IwVwXtNCKX6mw6blLm">
+    <mxGraphModel dx="1174" dy="760" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <UserObject label="" plantUmlData="{&#xa;  &quot;data&quot;: &quot;@startuml\ntitle Deployment Diagram: Sơ đồ Triển khai Hệ thống BlueMoon SE09\nskinparam roundcorner 8\nskinparam shadowing false\nskinparam ranksep 48\nskinparam nodesep 36\nskinparam defaultTextAlignment center\n\nnode \&quot;&lt;&lt;device&gt;&gt;\\nClient Device (PC / Laptop)\&quot; as ClientDevice #F8F9FA {\n  node \&quot;&lt;&lt;execution environment&gt;&gt;\\nWeb Browser (Chrome, Edge, Safari)\&quot; as Browser {\n    artifact \&quot;&lt;&lt;artifact&gt;&gt;\\nReact Single Page Application\\n(HTML5, JS Bundle, CSS)\&quot; as ClientArtifact\n  }\n}\n\nnode \&quot;&lt;&lt;device&gt;&gt;\\nWeb Host Server\&quot; as WebServer #FFF9DB {\n  node \&quot;&lt;&lt;execution environment&gt;&gt;\\nVite Dev Server / Nginx Static Server\\n[Port 5174]\&quot; as ViteServer {\n    artifact \&quot;&lt;&lt;artifact&gt;&gt;\\nfrontend/dist/\\n(Compiled Static Assets)\&quot; as DistArtifact\n  }\n}\n\nnode \&quot;&lt;&lt;device&gt;&gt;\\nBackend Application Server\&quot; as BackendServer #EBF3FB {\n  node \&quot;&lt;&lt;execution environment&gt;&gt;\\nNode.js Runtime (v20+) &amp; Express 5\\n[Port 3001]\&quot; as NodeRuntime {\n    artifact \&quot;&lt;&lt;artifact&gt;&gt;\\nbackend/index.js &amp; app.js\\n(REST API Services)\&quot; as BackendApp\n    artifact \&quot;&lt;&lt;artifact&gt;&gt;\\nnode_modules/\\n(Express, bcrypt, jwt, ExcelJS)\&quot; as Libs\n    artifact \&quot;&lt;&lt;configuration&gt;&gt;\\nbackend/.env\\n(DB Config, JWT Secret)\&quot; as EnvConfig\n  }\n}\n\nnode \&quot;&lt;&lt;device&gt;&gt;\\nDatabase Server\&quot; as DBServer #F1F3F5 {\n  node \&quot;&lt;&lt;execution environment&gt;&gt;\\nMySQL Server 8.0 RDBMS\\n[Port 3306]\&quot; as MySQLInstance {\n    database \&quot;&lt;&lt;database&gt;&gt;\\nbluemoon_se09 (InnoDB)\&quot; as DB {\n      artifact \&quot;Tables:\\n- users\\n- apartments\\n- households\\n- residents\\n- residency_events\&quot; as Tables\n    }\n  }\n}\n\nClientDevice -- WebServer : &lt;&lt;protocol&gt;&gt; HTTP/HTTPS\\n[Port 5174]\\nLoad Static App\nClientDevice -- BackendServer : &lt;&lt;protocol&gt;&gt; RESTful HTTP/JSON\\n[Port 3001]\\nHeader: Bearer &lt;JWT&gt;\nBackendServer -- DBServer : &lt;&lt;protocol&gt;&gt; MySQL TCP/IP\\n[Port 3306]\\nConnection Pool (mysql2)\n\n@enduml&quot;,&#xa;  &quot;config&quot;: null&#xa;}" id="ClS7WReP9sWTbguqGEA0-1">
+          <mxCell connectable="0" parent="1" style="group;transparentBounds=1;editIcon=1;lockedGroup=0;groupPadding=10;" vertex="1">
+            <mxGeometry as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="«device»&#xa;Client Device (PC / Laptop)" plantUmlId="c_0" plantUmlBaseStyle="shape=cube;size=10;flipH=1;fillColor=#F8F9FA;strokeColor=#181818;verticalAlign=top;align=center;spacingTop=7;spacingRight=10;fontSize=14;fontStyle=1;whiteSpace=wrap;rounded=1;arcSize=8;absoluteArcSize=1;shadow=0;" plantUmlBaseValue="«device»&#xa;Client Device (PC / Laptop)" id="ClS7WReP9sWTbguqGEA0-2">
+          <mxCell parent="ClS7WReP9sWTbguqGEA0-1" style="shape=cube;size=10;flipH=1;fillColor=#F8F9FA;strokeColor=#181818;verticalAlign=top;align=center;spacingTop=7;spacingRight=10;fontSize=14;fontStyle=1;whiteSpace=wrap;rounded=1;arcSize=8;absoluteArcSize=1;shadow=0;" vertex="1">
+            <mxGeometry height="204" width="368.95" x="334.3" y="66" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="«execution environment»&#xa;Web Browser (Chrome, Edge, Safari)" plantUmlId="c_1" plantUmlBaseStyle="shape=cube;size=10;flipH=1;fillColor=none;strokeColor=#181818;verticalAlign=top;align=center;spacingTop=7;spacingRight=10;fontSize=14;fontStyle=1;whiteSpace=wrap;rounded=1;arcSize=8;absoluteArcSize=1;shadow=0;" plantUmlBaseValue="«execution environment»&#xa;Web Browser (Chrome, Edge, Safari)" id="ClS7WReP9sWTbguqGEA0-3">
+          <mxCell parent="ClS7WReP9sWTbguqGEA0-2" style="shape=cube;size=10;flipH=1;fillColor=none;strokeColor=#181818;verticalAlign=top;align=center;spacingTop=7;spacingRight=10;fontSize=14;fontStyle=1;whiteSpace=wrap;rounded=1;arcSize=8;absoluteArcSize=1;shadow=0;" vertex="1">
+            <mxGeometry height="133" width="328.94500000000005" x="15" y="55" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="«artifact»&#xa;React Single Page Application&#xa;(HTML5, JS Bundle, CSS)" plantUmlId="n_2" plantUmlBaseStyle="rounded=1;absoluteArcSize=1;arcSize=8;fillColor=#F1F1F1;strokeColor=#181818;fontSize=14;whiteSpace=wrap;spacingRight=10;spacingTop=2;shadow=0;align=center;" plantUmlBaseValue="«artifact»&#xa;React Single Page Application&#xa;(HTML5, JS Bundle, CSS)" id="ClS7WReP9sWTbguqGEA0-4">
+          <mxCell parent="ClS7WReP9sWTbguqGEA0-3" style="rounded=1;absoluteArcSize=1;arcSize=8;fillColor=#F1F1F1;strokeColor=#181818;fontSize=14;whiteSpace=wrap;spacingRight=10;spacingTop=2;shadow=0;align=center;" vertex="1">
+            <mxGeometry height="62" width="220" x="49" y="55" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="" plantUmlId="ci_3" plantUmlBaseStyle="shape=note;size=6;fillColor=#F1F1F1;strokeColor=#181818;strokeWidth=0.5;part=1;shadow=0;align=center;" plantUmlBaseValue="" id="ClS7WReP9sWTbguqGEA0-5">
+          <mxCell parent="ClS7WReP9sWTbguqGEA0-4" style="shape=note;size=6;fillColor=#F1F1F1;strokeColor=#181818;strokeWidth=0.5;part=1;shadow=0;align=center;" vertex="1">
+            <mxGeometry height="14" relative="1" width="12" x="1" as="geometry">
+              <mxPoint x="-17" y="5" as="offset" />
+            </mxGeometry>
+          </mxCell>
+        </UserObject>
+        <UserObject label="«device»&#xa;Web Host Server" plantUmlId="c_4" plantUmlBaseStyle="shape=cube;size=10;flipH=1;fillColor=#FFF9DB;strokeColor=#181818;verticalAlign=top;align=center;spacingTop=7;spacingRight=10;fontSize=14;fontStyle=1;whiteSpace=wrap;rounded=1;arcSize=8;absoluteArcSize=1;shadow=0;" plantUmlBaseValue="«device»&#xa;Web Host Server" id="ClS7WReP9sWTbguqGEA0-6">
+          <mxCell parent="ClS7WReP9sWTbguqGEA0-1" style="shape=cube;size=10;flipH=1;fillColor=#FFF9DB;strokeColor=#181818;verticalAlign=top;align=center;spacingTop=7;spacingRight=10;fontSize=14;fontStyle=1;whiteSpace=wrap;rounded=1;arcSize=8;absoluteArcSize=1;shadow=0;" vertex="1">
+            <mxGeometry height="219" width="373.67" x="30" y="318" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="«execution environment»&#xa;Vite Dev Server / Nginx Static Server&#xa;[Port 5174]" plantUmlId="c_5" plantUmlBaseStyle="shape=cube;size=10;flipH=1;fillColor=none;strokeColor=#181818;verticalAlign=top;align=center;spacingTop=7;spacingRight=10;fontSize=14;fontStyle=1;whiteSpace=wrap;rounded=1;arcSize=8;absoluteArcSize=1;shadow=0;" plantUmlBaseValue="«execution environment»&#xa;Vite Dev Server / Nginx Static Server&#xa;[Port 5174]" id="ClS7WReP9sWTbguqGEA0-7">
+          <mxCell parent="ClS7WReP9sWTbguqGEA0-6" style="shape=cube;size=10;flipH=1;fillColor=none;strokeColor=#181818;verticalAlign=top;align=center;spacingTop=7;spacingRight=10;fontSize=14;fontStyle=1;whiteSpace=wrap;rounded=1;arcSize=8;absoluteArcSize=1;shadow=0;" vertex="1">
+            <mxGeometry height="148" width="333.6700000000001" x="15" y="55" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="«artifact»&#xa;frontend/dist/&#xa;(Compiled Static Assets)" plantUmlId="n_6" plantUmlBaseStyle="rounded=1;absoluteArcSize=1;arcSize=8;fillColor=#F1F1F1;strokeColor=#181818;fontSize=14;whiteSpace=wrap;spacingRight=10;spacingTop=2;shadow=0;align=center;" plantUmlBaseValue="«artifact»&#xa;frontend/dist/&#xa;(Compiled Static Assets)" id="ClS7WReP9sWTbguqGEA0-8">
+          <mxCell parent="ClS7WReP9sWTbguqGEA0-7" style="rounded=1;absoluteArcSize=1;arcSize=8;fillColor=#F1F1F1;strokeColor=#181818;fontSize=14;whiteSpace=wrap;spacingRight=10;spacingTop=2;shadow=0;align=center;" vertex="1">
+            <mxGeometry height="62" width="185" x="69" y="70" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="" plantUmlId="ci_7" plantUmlBaseStyle="shape=note;size=6;fillColor=#F1F1F1;strokeColor=#181818;strokeWidth=0.5;part=1;shadow=0;align=center;" plantUmlBaseValue="" id="ClS7WReP9sWTbguqGEA0-9">
+          <mxCell parent="ClS7WReP9sWTbguqGEA0-8" style="shape=note;size=6;fillColor=#F1F1F1;strokeColor=#181818;strokeWidth=0.5;part=1;shadow=0;align=center;" vertex="1">
+            <mxGeometry height="14" relative="1" width="12" x="1" as="geometry">
+              <mxPoint x="-17" y="5" as="offset" />
+            </mxGeometry>
+          </mxCell>
+        </UserObject>
+        <UserObject label="«device»&#xa;Backend Application Server" plantUmlId="c_8" plantUmlBaseStyle="shape=cube;size=10;flipH=1;fillColor=#EBF3FB;strokeColor=#181818;verticalAlign=top;align=center;spacingTop=7;spacingRight=10;fontSize=14;fontStyle=1;whiteSpace=wrap;rounded=1;arcSize=8;absoluteArcSize=1;shadow=0;" plantUmlBaseValue="«device»&#xa;Backend Application Server" id="ClS7WReP9sWTbguqGEA0-10">
+          <mxCell parent="ClS7WReP9sWTbguqGEA0-1" style="shape=cube;size=10;flipH=1;fillColor=#EBF3FB;strokeColor=#181818;verticalAlign=top;align=center;spacingTop=7;spacingRight=10;fontSize=14;fontStyle=1;whiteSpace=wrap;rounded=1;arcSize=8;absoluteArcSize=1;shadow=0;" vertex="1">
+            <mxGeometry height="219" width="764" x="438.67" y="318" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="«execution environment»&#xa;Node.js Runtime (v20+) &amp; Express 5&#xa;[Port 3001]" plantUmlId="c_9" plantUmlBaseStyle="shape=cube;size=10;flipH=1;fillColor=none;strokeColor=#181818;verticalAlign=top;align=center;spacingTop=7;spacingRight=10;fontSize=14;fontStyle=1;whiteSpace=wrap;rounded=1;arcSize=8;absoluteArcSize=1;shadow=0;" plantUmlBaseValue="«execution environment»&#xa;Node.js Runtime (v20+) &amp; Express 5&#xa;[Port 3001]" id="ClS7WReP9sWTbguqGEA0-11">
+          <mxCell parent="ClS7WReP9sWTbguqGEA0-10" style="shape=cube;size=10;flipH=1;fillColor=none;strokeColor=#181818;verticalAlign=top;align=center;spacingTop=7;spacingRight=10;fontSize=14;fontStyle=1;whiteSpace=wrap;rounded=1;arcSize=8;absoluteArcSize=1;shadow=0;" vertex="1">
+            <mxGeometry height="148" width="724" x="15" y="55" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="«artifact»&#xa;backend/index.js &amp; app.js&#xa;(REST API Services)" plantUmlId="n_10" plantUmlBaseStyle="rounded=1;absoluteArcSize=1;arcSize=8;fillColor=#F1F1F1;strokeColor=#181818;fontSize=14;whiteSpace=wrap;spacingRight=10;spacingTop=2;shadow=0;align=center;" plantUmlBaseValue="«artifact»&#xa;backend/index.js &amp; app.js&#xa;(REST API Services)" id="ClS7WReP9sWTbguqGEA0-12">
+          <mxCell parent="ClS7WReP9sWTbguqGEA0-11" style="rounded=1;absoluteArcSize=1;arcSize=8;fillColor=#F1F1F1;strokeColor=#181818;fontSize=14;whiteSpace=wrap;spacingRight=10;spacingTop=2;shadow=0;align=center;" vertex="1">
+            <mxGeometry height="62" width="200" x="15" y="70" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="" plantUmlId="ci_11" plantUmlBaseStyle="shape=note;size=6;fillColor=#F1F1F1;strokeColor=#181818;strokeWidth=0.5;part=1;shadow=0;align=center;" plantUmlBaseValue="" id="ClS7WReP9sWTbguqGEA0-13">
+          <mxCell parent="ClS7WReP9sWTbguqGEA0-12" style="shape=note;size=6;fillColor=#F1F1F1;strokeColor=#181818;strokeWidth=0.5;part=1;shadow=0;align=center;" vertex="1">
+            <mxGeometry height="14" relative="1" width="12" x="1" as="geometry">
+              <mxPoint x="-17" y="5" as="offset" />
+            </mxGeometry>
+          </mxCell>
+        </UserObject>
+        <UserObject label="«artifact»&#xa;node_modules/&#xa;(Express, bcrypt, jwt, ExcelJS)" plantUmlId="n_12" plantUmlBaseStyle="rounded=1;absoluteArcSize=1;arcSize=8;fillColor=#F1F1F1;strokeColor=#181818;fontSize=14;whiteSpace=wrap;spacingRight=10;spacingTop=2;shadow=0;align=center;" plantUmlBaseValue="«artifact»&#xa;node_modules/&#xa;(Express, bcrypt, jwt, ExcelJS)" id="ClS7WReP9sWTbguqGEA0-14">
+          <mxCell parent="ClS7WReP9sWTbguqGEA0-11" style="rounded=1;absoluteArcSize=1;arcSize=8;fillColor=#F1F1F1;strokeColor=#181818;fontSize=14;whiteSpace=wrap;spacingRight=10;spacingTop=2;shadow=0;align=center;" vertex="1">
+            <mxGeometry height="62" width="233" x="250" y="70" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="" plantUmlId="ci_13" plantUmlBaseStyle="shape=note;size=6;fillColor=#F1F1F1;strokeColor=#181818;strokeWidth=0.5;part=1;shadow=0;align=center;" plantUmlBaseValue="" id="ClS7WReP9sWTbguqGEA0-15">
+          <mxCell parent="ClS7WReP9sWTbguqGEA0-14" style="shape=note;size=6;fillColor=#F1F1F1;strokeColor=#181818;strokeWidth=0.5;part=1;shadow=0;align=center;" vertex="1">
+            <mxGeometry height="14" relative="1" width="12" x="1" as="geometry">
+              <mxPoint x="-17" y="5" as="offset" />
+            </mxGeometry>
+          </mxCell>
+        </UserObject>
+        <UserObject label="«configuration»&#xa;backend/.env&#xa;(DB Config, JWT Secret)" plantUmlId="n_14" plantUmlBaseStyle="rounded=1;absoluteArcSize=1;arcSize=8;fillColor=#F1F1F1;strokeColor=#181818;fontSize=14;whiteSpace=wrap;spacingRight=10;spacingTop=2;shadow=0;align=center;" plantUmlBaseValue="«configuration»&#xa;backend/.env&#xa;(DB Config, JWT Secret)" id="ClS7WReP9sWTbguqGEA0-16">
+          <mxCell parent="ClS7WReP9sWTbguqGEA0-11" style="rounded=1;absoluteArcSize=1;arcSize=8;fillColor=#F1F1F1;strokeColor=#181818;fontSize=14;whiteSpace=wrap;spacingRight=10;spacingTop=2;shadow=0;align=center;" vertex="1">
+            <mxGeometry height="62" width="181" x="518" y="70" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="" plantUmlId="ci_15" plantUmlBaseStyle="shape=note;size=6;fillColor=#F1F1F1;strokeColor=#181818;strokeWidth=0.5;part=1;shadow=0;align=center;" plantUmlBaseValue="" id="ClS7WReP9sWTbguqGEA0-17">
+          <mxCell parent="ClS7WReP9sWTbguqGEA0-16" style="shape=note;size=6;fillColor=#F1F1F1;strokeColor=#181818;strokeWidth=0.5;part=1;shadow=0;align=center;" vertex="1">
+            <mxGeometry height="14" relative="1" width="12" x="1" as="geometry">
+              <mxPoint x="-17" y="5" as="offset" />
+            </mxGeometry>
+          </mxCell>
+        </UserObject>
+        <UserObject label="«device»&#xa;Database Server" plantUmlId="c_16" plantUmlBaseStyle="shape=cube;size=10;flipH=1;fillColor=#F1F3F5;strokeColor=#181818;verticalAlign=top;align=center;spacingTop=7;spacingRight=10;fontSize=14;fontStyle=1;whiteSpace=wrap;rounded=1;arcSize=8;absoluteArcSize=1;shadow=0;" plantUmlBaseValue="«device»&#xa;Database Server" id="ClS7WReP9sWTbguqGEA0-18">
+          <mxCell parent="ClS7WReP9sWTbguqGEA0-1" style="shape=cube;size=10;flipH=1;fillColor=#F1F3F5;strokeColor=#181818;verticalAlign=top;align=center;spacingTop=7;spacingRight=10;fontSize=14;fontStyle=1;whiteSpace=wrap;rounded=1;arcSize=8;absoluteArcSize=1;shadow=0;" vertex="1">
+            <mxGeometry height="348" width="305.95" x="583.01" y="585" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="«execution environment»&#xa;MySQL Server 8.0 RDBMS&#xa;[Port 3306]" plantUmlId="c_17" plantUmlBaseStyle="shape=cube;size=10;flipH=1;fillColor=none;strokeColor=#181818;verticalAlign=top;align=center;spacingTop=7;spacingRight=10;fontSize=14;fontStyle=1;whiteSpace=wrap;rounded=1;arcSize=8;absoluteArcSize=1;shadow=0;" plantUmlBaseValue="«execution environment»&#xa;MySQL Server 8.0 RDBMS&#xa;[Port 3306]" id="ClS7WReP9sWTbguqGEA0-19">
+          <mxCell parent="ClS7WReP9sWTbguqGEA0-18" style="shape=cube;size=10;flipH=1;fillColor=none;strokeColor=#181818;verticalAlign=top;align=center;spacingTop=7;spacingRight=10;fontSize=14;fontStyle=1;whiteSpace=wrap;rounded=1;arcSize=8;absoluteArcSize=1;shadow=0;" vertex="1">
+            <mxGeometry height="277" width="265.94500000000005" x="15" y="55" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="«database»&#xa;bluemoon_se09 (InnoDB)" plantUmlId="c_18" plantUmlBaseStyle="shape=cylinder3;size=10;boundedLbl=1;backgroundOutline=1;fillColor=none;strokeColor=#181818;verticalAlign=top;align=center;spacingTop=-4;fontSize=14;fontStyle=1;whiteSpace=wrap;rounded=1;arcSize=8;absoluteArcSize=1;shadow=0;" plantUmlBaseValue="«database»&#xa;bluemoon_se09 (InnoDB)" id="ClS7WReP9sWTbguqGEA0-20">
+          <mxCell parent="ClS7WReP9sWTbguqGEA0-19" style="shape=cylinder3;size=10;boundedLbl=1;backgroundOutline=1;fillColor=none;strokeColor=#181818;verticalAlign=top;align=center;spacingTop=-4;fontSize=14;fontStyle=1;whiteSpace=wrap;rounded=1;arcSize=8;absoluteArcSize=1;shadow=0;" vertex="1">
+            <mxGeometry height="191" width="198.38" x="29" y="70" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="Tables:&#xa;- users&#xa;- apartments&#xa;- households&#xa;- residents&#xa;- residency_events" plantUmlId="n_19" plantUmlBaseStyle="rounded=1;absoluteArcSize=1;arcSize=8;fillColor=#F1F1F1;strokeColor=#181818;fontSize=14;whiteSpace=wrap;spacingRight=10;spacingTop=2;shadow=0;align=center;" plantUmlBaseValue="Tables:&#xa;- users&#xa;- apartments&#xa;- households&#xa;- residents&#xa;- residency_events" id="ClS7WReP9sWTbguqGEA0-21">
+          <mxCell parent="ClS7WReP9sWTbguqGEA0-20" style="rounded=1;absoluteArcSize=1;arcSize=8;fillColor=#F1F1F1;strokeColor=#181818;fontSize=14;whiteSpace=wrap;spacingRight=10;spacingTop=2;shadow=0;align=center;" vertex="1">
+            <mxGeometry height="110" width="160" x="19.5" y="65" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="" plantUmlId="ci_20" plantUmlBaseStyle="shape=note;size=6;fillColor=#F1F1F1;strokeColor=#181818;strokeWidth=0.5;part=1;shadow=0;align=center;" plantUmlBaseValue="" id="ClS7WReP9sWTbguqGEA0-22">
+          <mxCell parent="ClS7WReP9sWTbguqGEA0-21" style="shape=note;size=6;fillColor=#F1F1F1;strokeColor=#181818;strokeWidth=0.5;part=1;shadow=0;align=center;" vertex="1">
+            <mxGeometry height="14" relative="1" width="12" x="1" as="geometry">
+              <mxPoint x="-17" y="5" as="offset" />
+            </mxGeometry>
+          </mxCell>
+        </UserObject>
+        <UserObject label="«protocol» HTTP/HTTPS&#xa;[Port 5174]&#xa;Load Static App" plantUmlId="e_21" plantUmlBaseStyle="strokeColor=#181818;fontColor=#000000;fontSize=13;html=1;labelBackgroundColor=#FFFFFF;labelPosition=right;align=center;endArrow=none;curved=1;rounded=0;endSize=6;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" plantUmlBaseValue="«protocol» HTTP/HTTPS&#xa;[Port 5174]&#xa;Load Static App" id="ClS7WReP9sWTbguqGEA0-23">
+          <mxCell edge="1" parent="ClS7WReP9sWTbguqGEA0-1" source="ClS7WReP9sWTbguqGEA0-2" style="strokeColor=#181818;fontColor=#000000;fontSize=13;html=1;labelBackgroundColor=#FFFFFF;labelPosition=right;align=center;endArrow=none;curved=1;rounded=0;endSize=6;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" target="ClS7WReP9sWTbguqGEA0-6">
+            <mxGeometry relative="1" as="geometry">
+              <mxPoint x="103" y="-1" as="offset" />
+              <Array as="points">
+                <mxPoint x="452.79" y="289.95" />
+              </Array>
+              <mxPoint x="457.29" y="267.68" as="sourcePoint" />
+              <mxPoint x="216.84" y="327.05" as="targetPoint" />
+            </mxGeometry>
+          </mxCell>
+        </UserObject>
+        <UserObject label="«protocol» RESTful HTTP/JSON&#xa;[Port 3001]&#xa;Header: Bearer &amp;lt;JWT&amp;gt;" plantUmlId="e_22" plantUmlBaseStyle="strokeColor=#181818;fontColor=#000000;fontSize=13;html=1;labelBackgroundColor=#FFFFFF;labelPosition=right;align=center;endArrow=none;curved=1;rounded=0;endSize=6;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" plantUmlBaseValue="«protocol» RESTful HTTP/JSON&#xa;[Port 3001]&#xa;Header: Bearer &amp;lt;JWT&amp;gt;" id="ClS7WReP9sWTbguqGEA0-24">
+          <mxCell edge="1" parent="ClS7WReP9sWTbguqGEA0-1" source="ClS7WReP9sWTbguqGEA0-2" style="strokeColor=#181818;fontColor=#000000;fontSize=13;html=1;labelBackgroundColor=#FFFFFF;labelPosition=right;align=center;endArrow=none;curved=1;rounded=0;endSize=6;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" target="ClS7WReP9sWTbguqGEA0-10">
+            <mxGeometry relative="1" as="geometry">
+              <mxPoint x="159" y="27" as="offset" />
+              <Array as="points">
+                <mxPoint x="828.17" y="289.95" />
+              </Array>
+              <mxPoint x="580.27" y="267.68" as="sourcePoint" />
+              <mxPoint x="820.67" y="327.05" as="targetPoint" />
+            </mxGeometry>
+          </mxCell>
+        </UserObject>
+        <UserObject label="«protocol» MySQL TCP/IP&#xa;[Port 3306]&#xa;Connection Pool (mysql2)" plantUmlId="e_23" plantUmlBaseStyle="strokeColor=#181818;fontColor=#000000;fontSize=13;html=1;labelBackgroundColor=#FFFFFF;labelPosition=right;align=center;endArrow=none;curved=1;rounded=0;endSize=6;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" plantUmlBaseValue="«protocol» MySQL TCP/IP&#xa;[Port 3306]&#xa;Connection Pool (mysql2)" id="ClS7WReP9sWTbguqGEA0-25">
+          <mxCell edge="1" parent="ClS7WReP9sWTbguqGEA0-1" source="ClS7WReP9sWTbguqGEA0-10" style="strokeColor=#181818;fontColor=#000000;fontSize=13;html=1;labelBackgroundColor=#FFFFFF;labelPosition=right;align=center;endArrow=none;curved=1;rounded=0;endSize=6;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" target="ClS7WReP9sWTbguqGEA0-18">
+            <mxGeometry relative="1" as="geometry">
+              <mxPoint x="96" y="6" as="offset" />
+              <Array as="points">
+                <mxPoint x="735.99" y="557.87" />
+              </Array>
+              <mxPoint x="820.67" y="535.21" as="sourcePoint" />
+              <mxPoint x="735.99" y="595.63" as="targetPoint" />
+            </mxGeometry>
+          </mxCell>
+        </UserObject>
+        <UserObject label="Deployment Diagram: Sơ đồ Triển khai Hệ thống BlueMoon SE09" plantUmlId="title_24" plantUmlBaseStyle="text;html=1;fillColor=none;strokeColor=none;fontSize=14;fontStyle=1;fontColor=#000000;align=center;verticalAlign=middle;" plantUmlBaseValue="Deployment Diagram: Sơ đồ Triển khai Hệ thống BlueMoon SE09" id="ClS7WReP9sWTbguqGEA0-26">
+          <mxCell parent="ClS7WReP9sWTbguqGEA0-1" style="text;html=1;fillColor=none;strokeColor=none;fontSize=14;fontStyle=1;fontColor=#000000;align=center;verticalAlign=middle;" vertex="1">
+            <mxGeometry height="24" width="451" x="391.25" y="30" as="geometry" />
+          </mxCell>
+        </UserObject>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

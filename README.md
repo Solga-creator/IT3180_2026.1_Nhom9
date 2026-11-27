@@ -1,17 +1,29 @@
 # BlueMoon SE09
 
-Ứng dụng web quản lý thu phí chung cư, xây dựng bằng JavaScript với React/Vite, Express và MySQL.
+Ứng dụng web quản lý cư trú, tài khoản và thu phí chung cư BlueMoon, xây dựng bằng JavaScript với React/Vite, Express và MySQL.
+
+## Tổng hợp và kế hoạch tiếp theo
+
+- [Bắt đầu từ đây — thứ tự đọc và tài liệu theo vai trò](docs/README.md).
+- [Quy trình nhận task, review và bàn giao](CONTRIBUTING.md).
+- [Tổng hợp trạng thái dự án, review, sửa lỗi và lộ trình](docs/project-summary-and-roadmap.md).
+- [Kế hoạch triển khai Sprint 2 — 12 task, phân công và tiêu chí Done](docs/sprint2-implementation-plan.md).
+- [Bộ thiết kế giao diện mới và hướng dẫn nhập Figma](design/bluemoon-ui-redesign/README.md) — bản đề xuất, chưa áp vào frontend.
+
+Lưu ý: số test S1 trong báo cáo nền cần được chạy lại và cập nhật sau các sửa gần nhất. Lần xác minh hồi quy gần nhất chỉ chạy 26 test liên quan, không phải toàn bộ bộ kiểm thử. Sprint 2 hiện ở trạng thái kế hoạch.
+
+> **Phạm vi nghiệm thu hiện tại (Sprint 1):** Hoàn thiện nền tảng **quản lý danh mục căn hộ, hộ gia đình & biến động nhân khẩu, xuất báo cáo Excel nhân khẩu và quản lý tài khoản/xác thực phân quyền** (`8/8 Must User Stories`: `US-001`..`005`, `US-015`..`017`). Phân hệ trung tâm về **bảng thu phí định kỳ, ghi nhận thanh toán, công nợ, quỹ tự nguyện và báo cáo thu** (`11 User Stories`: `US-006`..`014`, `US-018`..`019`) thuộc phạm vi **Sprint 2** và đã được thiết kế chi tiết tại [`docs/sprint2-technical-base.md`](docs/sprint2-technical-base.md) (hai module `backend/strategies/feeCalculationStrategy.js` và `backend/observers/domainEventBus.js` là khung nền tảng chuẩn bị cho Sprint 2).
 
 ## Phạm vi hiện tại
 
-- **US-001:** Lưu căn hộ và diện tích (m²) tại màn hình chính, làm cơ sở lưu nhân khẩu (US-002) và tính phí dịch vụ/quản lý (US-008).
-- **US-002:** Lưu chủ hộ và nhân khẩu theo từng căn hộ.
-- **US-003:** Tìm hồ sơ hộ/nhân khẩu theo số phòng hoặc họ tên.
-- **US-004:** Ghi tình trạng tạm trú, tạm vắng, chuyển đi, chuyển đến và lưu lịch sử.
-- **US-005:** Xuất file Excel danh sách nhân khẩu theo trạng thái cư trú hiện tại, kèm căn hộ trong hồ sơ.
-- **US-015:** Quản trị viên cấp và quản lý tài khoản thành viên BQT.
-- **US-016:** Đăng nhập bằng tài khoản được cấp; API và trang nghiệp vụ yêu cầu xác thực.
-- **US-017:** Thành viên cập nhật hồ sơ của mình và đổi mật khẩu sau khi xác minh mật khẩu hiện tại.
+- **US-001:** Lưu, sửa nhanh tại chỗ (inline), xóa căn hộ trống và mở xem nhân khẩu trực tiếp theo từng căn hộ và diện tích (m²) tại màn hình Căn hộ, làm cơ sở lưu nhân khẩu (US-002) và tính phí dịch vụ/quản lý (US-008).
+- **US-002:** Lưu, sửa nhanh tại chỗ, xóa nhân khẩu nhập nhầm (kèm CCCD/CMND) và đổi chủ hộ có bước xác nhận rõ người cũ → người mới theo từng căn hộ.
+- **US-003:** Tìm hồ sơ hộ/nhân khẩu theo số phòng hoặc họ tên (hỗ trợ lọc theo căn hộ, trạng thái và tùy chọn tải lịch sử).
+- **US-004:** Ghi tình trạng tạm trú, tạm vắng, chuyển đi, chuyển đến theo ngày hiệu lực (cho phép để trống ngày kết thúc với trạng thái chưa biết thời điểm kết thúc; sự kiện tương lai hoặc quá khứ không ghi đè sai trạng thái hiện tại; tự động thu hồi quyền truy cập hộ cũ khi cư dân `"Chuyển đi"`).
+- **US-005:** Xuất file Excel danh sách nhân khẩu theo trạng thái cư trú hiện tại, đồng bộ với từ khóa tìm kiếm đang lọc.
+- **US-015:** Quản trị viên cấp, đặt lại mật khẩu tạm ngẫu nhiên (kèm thu hồi phiên cũ `token_version` và yêu cầu đổi mật khẩu lần đăng nhập kế tiếp) cho tài khoản thành viên BQT; hỗ trợ Cư dân tự đăng ký tài khoản chờ BQT phê duyệt và xem thông tin hộ gia đình của mình (che bảo mật CCCD của các thành viên khác từ API).
+- **US-016:** Đăng nhập bằng tài khoản được cấp (bắt buộc cấu hình `JWT_SECRET` khi khởi động server, khóa tạm 5 phút khi đăng nhập sai 5 lần liên tiếp chống brute-force); API và trang nghiệp vụ yêu cầu xác thực.
+- **US-017:** Thành viên cập nhật hồ sơ của mình và đổi mật khẩu sau khi xác minh mật khẩu hiện tại (tự động tăng `token_version` để thu hồi mọi token phiên cũ).
 
 ## Kiến trúc và công nghệ
 
@@ -77,19 +89,32 @@ Các API dùng JSON, ngoại trừ phản hồi xuất Excel là dữ liệu nh�
 | Method | Endpoint | Quyền | Dữ liệu gửi lên |
 |---|---|---|---|
 | `GET` | `/api/health` | Công khai | Không có; kiểm tra backend còn hoạt động |
-| `POST` | `/api/auth/login` | Công khai | `username`, `password`; trả token và thông tin user |
+| `POST` | `/api/auth/login` | Công khai | `username`, `password`; trả token và thông tin user (khóa tạm 5 phút nếu sai 5 lần) |
+| `POST` | `/api/auth/register-resident` | Công khai | `roomNumber`, `fullName`, `username`, `password`; cư dân tự gửi yêu cầu tạo tài khoản (`PENDING`) |
 | `GET` | `/api/auth/me` | Đã đăng nhập | Không có; trả user của token hiện tại |
-| `PATCH` | `/api/auth/profile` | Đã đăng nhập | `fullName`, `phone` |
-| `POST` | `/api/auth/password` | Đã đăng nhập | `currentPassword`, `newPassword` |
+| `GET` | `/api/auth/residence` | RESIDENT | Không có; trả thông tin căn hộ, danh sách thành viên đang cư trú (che bảo mật CCCD thành viên khác) và lịch sử cư trú; chặn `403` nếu cư dân đã `"Chuyển đi"` |
+| `PATCH` | `/api/auth/profile` | ADMIN / BQT | `fullName`, `phone` |
+| `POST` | `/api/auth/password` | Đã đăng nhập | `currentPassword`, `newPassword`; đổi mật khẩu, thu hồi các token phiên cũ và cấp token mới |
 | `POST` | `/api/accounts` | ADMIN | `username`, `fullName`, `password` |
-| `GET` | `/api/accounts` | ADMIN | Không có; trả danh sách tài khoản |
+| `GET` | `/api/accounts` | ADMIN | Không có; trả danh sách tài khoản BQT/ADMIN |
+| `POST` | `/api/accounts/:id/reset-password` | ADMIN | Cấp mật khẩu tạm thời ngẫu nhiên, thu hồi phiên cũ, mở khóa tạm và bật cờ yêu cầu đổi mật khẩu |
 | `DELETE` | `/api/accounts/:id` | ADMIN | ID tài khoản nằm trên URL |
-| `GET` | `/api/apartments` | Đã đăng nhập | Không có; trả danh mục căn hộ (US-001) |
-| `POST` | `/api/apartments` | Đã đăng nhập | `roomNumber`, `area`; lưu căn hộ mới (US-001) |
-| `GET` | `/api/residents?search=` | Đã đăng nhập | Tùy chọn `search`; tìm theo số phòng hoặc họ tên (US-003), kèm lịch sử cư trú |
-| `GET` | `/api/residents/export?status=` | Đã đăng nhập | Bắt buộc `status` thuộc một trong năm trạng thái cư trú; trả file `.xlsx` (US-005) |
-| `POST` | `/api/residents` | Đã đăng nhập | `apartmentId`, `fullName`, `birthDate`, `relationship`; lưu chủ hộ/nhân khẩu (US-002) |
-| `POST` | `/api/residents/:id/residency-events` | Đã đăng nhập | `status`, `startDate`, `endDate`; cập nhật trạng thái và lưu lịch sử (US-004) |
+| `GET` | `/api/resident-accounts/candidates` | ADMIN / BQT | Danh sách nhân khẩu đang cư trú chưa có tài khoản cư dân |
+| `GET` | `/api/resident-accounts` | ADMIN / BQT | Danh sách tài khoản cư dân (`PENDING` chờ duyệt & `ACTIVE` đang hoạt động) |
+| `POST` | `/api/resident-accounts` | ADMIN / BQT | `residentId`, `username`, `password`; BQT chủ động cấp ngay tài khoản cư dân (`ACTIVE`) |
+| `PATCH` | `/api/resident-accounts/:id/approve` | ADMIN / BQT | Duyệt yêu cầu đăng ký tài khoản cư dân (`PENDING` -> `ACTIVE`) |
+| `POST` | `/api/resident-accounts/:id/reset-password` | ADMIN / BQT | Cấp mật khẩu tạm thời ngẫu nhiên cho tài khoản cư dân, thu hồi phiên cũ và yêu cầu đổi mật khẩu |
+| `DELETE` | `/api/resident-accounts/:id` | ADMIN / BQT | Xóa hoặc từ chối tài khoản cư dân |
+| `GET` | `/api/apartments` | ADMIN / BQT | Không có; trả danh mục căn hộ (US-001) |
+| `POST` | `/api/apartments` | ADMIN / BQT | `roomNumber`, `area`; lưu căn hộ mới (US-001) |
+| `PUT` | `/api/apartments/:id` | ADMIN / BQT | `roomNumber`, `area`; sửa nhanh số phòng hoặc diện tích căn hộ (US-001) |
+| `DELETE` | `/api/apartments/:id` | ADMIN / BQT | Xóa căn hộ tạo nhầm khi căn hộ chưa có nhân khẩu nào (US-001) |
+| `GET` | `/api/residents?search=` | ADMIN / BQT | Tùy chọn `search`; tìm theo số phòng hoặc họ tên (US-003), kèm CCCD và lịch sử cư trú |
+| `GET` | `/api/residents/export?status=` | ADMIN / BQT | Bắt buộc `status` thuộc một trong năm trạng thái cư trú; trả file `.xlsx` (US-005) |
+| `POST` | `/api/residents` | ADMIN / BQT | `apartmentId`, `fullName`, `birthDate`, `cccd`, `relationship`; lưu chủ hộ/nhân khẩu (US-002) |
+| `PUT` | `/api/residents/:id` | ADMIN / BQT | `fullName`, `birthDate`, `cccd`, `relationship`; sửa thông tin nhân khẩu hoặc chuyển quyền Chủ hộ (US-002) |
+| `DELETE` | `/api/residents/:id` | ADMIN / BQT | Xóa nhân khẩu nhập thừa (chặn xóa Chủ hộ nếu trong hộ vẫn còn thành viên khác) (US-002) |
+| `POST` | `/api/residents/:id/residency-events` | ADMIN / BQT | `status`, `startDate`, `endDate`; cập nhật trạng thái và lưu lịch sử (US-004) |
 
 Frontend gửi JWT trong header `Authorization: Bearer <token>` cho API cần đăng nhập. Backend luôn tự kiểm tra token và role; ẩn route ở frontend chỉ nhằm điều hướng giao diện, không thay thế kiểm tra quyền phía server.
 
@@ -148,7 +173,12 @@ Các lệnh dưới đây giả định terminal bắt đầu tại thư mục g
 
    Vite chạy tại `http://localhost:5174` và proxy `/api` sang backend. Giữ terminal này mở và truy cập địa chỉ đó để dùng web.
 
-Tài khoản ADMIN mẫu là `admin` / `admin123` nếu dùng giá trị mặc định trong `.env.example`. Đổi mật khẩu mẫu trước khi seed nếu cần. Seed chỉ tạo tài khoản nếu username chưa tồn tại; thay `ADMIN_PASSWORD` rồi chạy seed lại sẽ **không** đổi mật khẩu tài khoản đã có.
+Tài khoản mẫu được tạo sẵn bởi `npm run seed`:
+- **ADMIN:** `admin` / `admin123` (nếu dùng giá trị mặc định trong `.env.example`).
+- **Thành viên BQT:** `bqt01` / `123456`, `bqt02` / `123456`.
+- **Cư dân đã duyệt (`ACTIVE`):** `cudan050` / `123456` (Chủ hộ phòng `050`).
+- **Cư dân chờ duyệt (`PENDING`):** `cudan102` / `123456` (Chủ hộ phòng `102` — dùng để demo BQT bấm duyệt 1-click).
+- Kèm theo **6 căn hộ mẫu** (`050`, `101`, `102`, `201`, `202`, `301`) và **10 nhân khẩu mẫu** có sẵn số CCCD và lịch sử biến động cư trú (`Thường trú`, `Tạm trú`, `Tạm vắng`, `Chuyển đi`).
 
 ## Một số lỗi thường gặp
 
@@ -174,7 +204,7 @@ Chạy API integration tests:
 npm run test:e2e
 ```
 
-Các test API hiện có bao phủ luồng US-001 và xuất Excel US-005; US-002–US-004 chưa có automated test riêng.
+Bộ kiểm thử tự động hiện có **58/58 test cases đạt 100% PASS** (50 backend unit/functional tests + 7 backend HTTP integration tests + 1 frontend API client test), bao phủ toàn bộ 8/8 User Stories của Sprint 1 (`US-001`..`005`, `US-015`..`017`) cùng các quy tắc bảo mật `JWT_SECRET`, thu hồi phiên cũ `token_version`, reset mật khẩu tạm ngẫu nhiên, thu hồi quyền xem hộ khi chuyển đi, tính trạng thái cư trú động theo ngày hiệu lực và lọc chính xác theo `apartmentId`. *(Lưu ý: các test tự động trong `backend/tests` sử dụng mock database để chạy độc lập; việc kiểm chứng kết nối MySQL thực tế và giao diện trình duyệt được thực hiện qua `npm run seed` và kịch bản demo dưới đây).*
 
 Kiểm tra frontend:
 
@@ -230,6 +260,6 @@ node --test tests/api.test.mjs
 4. Mở file `.xlsx`: kiểm tra STT, căn hộ, họ tên, ngày sinh, quan hệ với chủ hộ và trạng thái. Chỉ những người có trạng thái hiện tại khớp lựa chọn được xuất, mỗi người một dòng; lịch sử không tạo thêm dòng.
 5. Số phòng như `050` giữ nguyên số 0 đầu, ngày sinh hiển thị `dd/mm/yyyy`, tên tiếng Việt không lỗi dấu.
 6. Đổi trạng thái của một nhân khẩu bằng US-004 rồi xuất lại: người đó chỉ xuất hiện trong danh sách trạng thái mới.
-7. Chọn trạng thái không có người: giao diện báo không có nhân khẩu phù hợp, không tải file rỗng. Bộ lọc xuất độc lập với ô tìm kiếm.
+7. Chọn trạng thái không có người: giao diện báo không có nhân khẩu phù hợp, không tải file rỗng. Khi đang lọc theo số phòng hoặc từ khóa tìm kiếm trên bảng, file Excel xuất ra sẽ đồng bộ theo bộ lọc đang xem (hoặc xuất toàn bộ theo trạng thái nếu không nhập bộ lọc).
 
 API yêu cầu đăng nhập, trả `400` nếu trạng thái thiếu/sai và `404` nếu không có kết quả. Căn hộ được lấy từ liên kết hồ sơ hiện có, kể cả người có trạng thái **Chuyển đi**; US-005 không thay đổi cách lưu căn hộ của US-004.

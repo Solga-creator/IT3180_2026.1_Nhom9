@@ -7,7 +7,9 @@ function AccountActions({
   currentUserId,
   confirmId,
   deletingId,
+  resettingId,
   onDelete,
+  onResetPassword,
   onConfirm,
   onCancel,
 }) {
@@ -34,13 +36,23 @@ function AccountActions({
   }
 
   return (
-    <button
-      type="button"
-      className="danger"
-      onClick={() => onConfirm(account.id)}
-    >
-      Xóa
-    </button>
+    <span className="row-actions">
+      <button
+        type="button"
+        className="link"
+        disabled={resettingId === account.id}
+        onClick={() => onResetPassword(account)}
+      >
+        Đặt lại MK
+      </button>
+      <button
+        type="button"
+        className="danger"
+        onClick={() => onConfirm(account.id)}
+      >
+        Xóa
+      </button>
+    </span>
   );
 }
 
@@ -54,6 +66,7 @@ export default function IssueAccountPage() {
   const [users, setUsers] = useState([]);
   const [busy, setBusy] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
+  const [resettingId, setResettingId] = useState(null);
   const [confirmId, setConfirmId] = useState(null);
 
   async function load() {
@@ -115,6 +128,25 @@ export default function IssueAccountPage() {
       setError(err.message);
     } finally {
       setDeletingId(null);
+    }
+  }
+
+  async function onResetPassword(target) {
+    setError("");
+    setMessage("");
+    setResettingId(target.id);
+    try {
+      const data = await api(`/api/accounts/${target.id}/reset-password`, {
+        method: "POST",
+      });
+      const tempPw = data.temporaryPassword || data.defaultPassword;
+      setMessage(
+        `Đã cấp mật khẩu tạm thời "${tempPw}" cho tài khoản ${data.username} (đã thu hồi các phiên đăng nhập cũ và yêu cầu đổi mật khẩu khi đăng nhập).`,
+      );
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setResettingId(null);
     }
   }
 
@@ -186,7 +218,9 @@ export default function IssueAccountPage() {
                   currentUserId={user.id}
                   confirmId={confirmId}
                   deletingId={deletingId}
+                  resettingId={resettingId}
                   onDelete={onDelete}
+                  onResetPassword={onResetPassword}
                   onConfirm={setConfirmId}
                   onCancel={() => setConfirmId(null)}
                 />

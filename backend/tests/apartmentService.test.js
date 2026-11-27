@@ -2,7 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { pool } from "../config/database.js";
 import {
+  editApartment,
   getApartments,
+  removeApartment,
   saveApartment,
 } from "../services/apartmentService.js";
 import { AppError } from "../helpers/AppError.js";
@@ -143,4 +145,57 @@ test("US-001 Service: getApartments trả về danh mục căn hộ sắp xếp 
   assert.equal(list[0].area, 60);
   assert.equal(list[1].roomNumber, "101");
   assert.equal(list[1].area, 75.5);
+});
+
+test("US-001 Service: editApartment cập nhật diện tích/số phòng và chặn trùng số phòng", async (t) => {
+  t.mock.method(pool, "query", async (sql, params) => {
+    if (sql.includes("WHERE id = ?") && sql.includes("SELECT")) {
+      if (params[0] === 99) return [[], []];
+      return [[{ id: 1, room_number: "050", area: "64.50", created_at: new Date(), updated_at: new Date() }], []];
+    }
+    if (sql.includes("WHERE room_number = ?")) {
+      if (params[0] === "101") return [[{ id: 2, room_number: "101", area: "75.00" }], []];
+      return [[], []];
+    }
+    if (sql.includes("UPDATE apartments")) {
+      return [{ affectedRows: 1 }, []];
+    }
+    return [[], []];
+  });
+
+  await assert.rejects(editApartment("abc", { roomNumber: "050", area: 64.5 }), { statusCode: 400 });
+  await assert.rejects(editApartment(99, { roomNumber: "050", area: 64.5 }), { statusCode: 404 });
+  await assert.rejects(editApartment(1, { roomNumber: "101", area: 64.5 }), { statusCode: 409 });
+
+  const updated = await editApartment(1, { roomNumber: "050", area: 64.5 });
+  assert.equal(updated.id, 1);
+  assert.equal(updated.area, 64.5);
+});
+
+test("US-001 Service: removeApartment xóa căn hộ trống và chặn xóa căn hộ đang có nhân khẩu", async (t) => {
+  let residentCount = 2;
+  let deleted = false;
+  t.mock.method(pool, "query", async (sql, params) => {
+    if (sql.includes("WHERE id = ?") && sql.includes("SELECT")) {
+      if (params[0] === 99) return [[], []];
+      return [[{ id: 1, room_number: "050", area: "60.00" }], []];
+    }
+    if (sql.includes("COUNT(*) AS n")) {
+      return [[{ n: residentCount }], []];
+    }
+    if (sql.includes("DELETE FROM apartments")) {
+      deleted = true;
+      return [{ affectedRows: 1 }, []];
+    }
+    return [[], []];
+  });
+
+  await assert.rejects(removeApartment("abc"), { statusCode: 400 });
+  await assert.rejects(removeApartment(99), { statusCode: 404 });
+  await assert.rejects(removeApartment(1), { statusCode: 400 });
+
+  residentCount = 0;
+  const room = await removeApartment(1);
+  assert.equal(room, "050");
+  assert.equal(deleted, true);
 });

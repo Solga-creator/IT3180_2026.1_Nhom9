@@ -2,6 +2,7 @@ import {
   getAccounts as listAccounts,
   issueAccount as createAccount,
   removeAccount as deleteAccount,
+  resetStaffPassword as resetPassword,
 } from "../../services/accountService.js";
 
 export async function issueAccount(req, res) {
@@ -25,5 +26,13 @@ export async function removeAccount(req, res) {
   return res.json({
     success: true,
     username,
+  });
+}
+
+export async function resetStaffPassword(req, res) {
+  const result = await resetPassword(req.params.id, req.body?.newPassword);
+  return res.json({
+    success: true,
+    ...result,
   });
 }

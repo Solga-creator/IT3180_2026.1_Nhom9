@@ -1,0 +1,388 @@
+[
+  {
+    "key": "01-can-ho",
+    "title": "Căn hộ",
+    "phase": "Sprint 1",
+    "group": "Sprint 1 · Quản lý cư dân"
+  },
+  {
+    "key": "02-nhan-khau",
+    "title": "Hộ và nhân khẩu",
+    "phase": "Sprint 1",
+    "group": "Sprint 1 · Quản lý cư dân"
+  },
+  {
+    "key": "03-doi-cu-tru",
+    "title": "Đổi cư trú · Hộp thoại",
+    "phase": "Sprint 1",
+    "group": "Sprint 1 · Quản lý cư dân"
+  },
+  {
+    "key": "04-tai-khoan-cu-dan",
+    "title": "Tài khoản cư dân",
+    "phase": "Sprint 1",
+    "group": "Sprint 1 · Quản lý cư dân"
+  },
+  {
+    "key": "05-ho-so-ca-nhan",
+    "title": "Hồ sơ cá nhân",
+    "phase": "Sprint 1",
+    "group": "Sprint 1 · Quản lý cư dân"
+  },
+  {
+    "key": "06-can-ho-cua-toi",
+    "title": "Căn hộ của tôi",
+    "phase": "Sprint 1",
+    "group": "Sprint 1 · Quản lý cư dân"
+  },
+  {
+    "key": "07-dang-nhap",
+    "title": "Đăng nhập",
+    "phase": "Sprint 1",
+    "group": "Sprint 1 · Quản lý cư dân"
+  },
+  {
+    "key": "08-thu-phi-sprint-2",
+    "title": "Thu phí & công nợ",
+    "phase": "Sprint 2 · Đề xuất",
+    "group": "Lưu trữ · Phác thảo ban đầu"
+  },
+  {
+    "key": "09-mobile-cu-dan",
+    "title": "Cư dân · Điện thoại",
+    "phase": "Sprint 1",
+    "group": "Sprint 1 · Quản lý cư dân"
+  },
+  {
+    "key": "10-don-gia",
+    "title": "Đơn giá & ngày hiệu lực",
+    "phase": "Sprint 2 · Thiết kế",
+    "stories": [
+      "US-006"
+    ],
+    "group": "Sprint 2 · Thu phí & vận hành"
+  },
+  {
+    "key": "11-preview-bang-thu",
+    "title": "Xem trước & phát hành",
+    "phase": "Sprint 2 · Thiết kế",
+    "stories": [
+      "US-008"
+    ],
+    "group": "Sprint 2 · Thu phí & vận hành"
+  },
+  {
+    "key": "12-bang-thu",
+    "title": "Bảng thu & tra cứu nhanh",
+    "phase": "Sprint 2 · Thiết kế",
+    "stories": [
+      "US-008",
+      "US-010",
+      "US-012"
+    ],
+    "group": "Sprint 2 · Thu phí & vận hành"
+  },
+  {
+    "key": "13-thu-tien",
+    "title": "Thu tiền · Giữ ngữ cảnh",
+    "phase": "Sprint 2 · Thiết kế",
+    "stories": [
+      "US-010"
+    ],
+    "group": "Sprint 2 · Thu phí & vận hành"
+  },
+  {
+    "key": "14-xac-nhan-thu",
+    "title": "Xác nhận trước khi thu",
+    "phase": "Sprint 2 · Thiết kế",
+    "stories": [
+      "US-010"
+    ],
+    "group": "Sprint 2 · Thu phí & vận hành"
+  },
+  {
+    "key": "15-bien-lai",
+    "title": "Biên lai & in lại",
+    "phase": "Sprint 2 · Thiết kế",
+    "stories": [
+      "US-010"
+    ],
+    "group": "Sprint 2 · Thu phí & vận hành"
+  },
+  {
+    "key": "16-huy-thu",
+    "title": "Hủy thu nhầm · Có lý do",
+    "phase": "Sprint 2 · Thiết kế",
+    "stories": [
+      "US-010",
+      "US-019"
+    ],
+    "group": "Sprint 2 · Thu phí & vận hành"
+  },
+  {
+    "key": "17-cong-no",
+    "title": "Công nợ · Hộ hiện tại và hộ cũ",
+    "phase": "Sprint 2 · Thiết kế",
+    "stories": [
+      "US-012"
+    ],
+    "group": "Sprint 2 · Thu phí & vận hành"
+  },
+  {
+    "key": "18-lich-su",
+    "title": "Lịch sử giao dịch & dấu hủy",
+    "phase": "Sprint 2 · Thiết kế",
+    "stories": [
+      "US-013",
+      "US-019"
+    ],
+    "group": "Sprint 2 · Thu phí & vận hành"
+  },
+  {
+    "key": "19-quy-tu-nguyen",
+    "title": "Các đợt quỹ tự nguyện",
+    "phase": "Sprint 2 · Thiết kế",
+    "stories": [
+      "US-007",
+      "US-011"
+    ],
+    "group": "Sprint 2 · Thu phí & vận hành"
+  },
+  {
+    "key": "20-tao-dot-quy",
+    "title": "Tạo đợt vận động",
+    "phase": "Sprint 2 · Thiết kế",
+    "stories": [
+      "US-007"
+    ],
+    "group": "Sprint 2 · Thu phí & vận hành"
+  },
+  {
+    "key": "21-chi-tiet-quy",
+    "title": "Chi tiết quỹ & các khoản ủng hộ",
+    "phase": "Sprint 2 · Thiết kế",
+    "stories": [
+      "US-007",
+      "US-011"
+    ],
+    "group": "Sprint 2 · Thu phí & vận hành"
+  },
+  {
+    "key": "22-ghi-dong-gop",
+    "title": "Ghi nhận đóng góp tự nguyện",
+    "phase": "Sprint 2 · Thiết kế",
+    "stories": [
+      "US-011"
+    ],
+    "group": "Sprint 2 · Thu phí & vận hành"
+  },
+  {
+    "key": "23-bien-nhan-quy",
+    "title": "Biên nhận quỹ tự nguyện",
+    "phase": "Sprint 2 · Thiết kế",
+    "stories": [
+      "US-011",
+      "US-013"
+    ],
+    "group": "Sprint 2 · Thu phí & vận hành"
+  },
+  {
+    "key": "24-bao-cao",
+    "title": "Báo cáo & xuất Excel",
+    "phase": "Sprint 2 · Thiết kế",
+    "stories": [
+      "US-009",
+      "US-014"
+    ],
+    "group": "Sprint 2 · Thu phí & vận hành"
+  },
+  {
+    "key": "25-phan-quyen",
+    "title": "Gán vai trò tài khoản",
+    "phase": "Sprint 2 · Thiết kế",
+    "stories": [
+      "US-018"
+    ],
+    "group": "Sprint 2 · Thu phí & vận hành"
+  },
+  {
+    "key": "26-nhat-ky",
+    "title": "Audit · Trước và sau thao tác",
+    "phase": "Sprint 2 · Thiết kế",
+    "stories": [
+      "US-019"
+    ],
+    "group": "Sprint 2 · Thu phí & vận hành"
+  },
+  {
+    "key": "27-cu-dan-hoa-don",
+    "title": "Cư dân · Phí và biên lai",
+    "phase": "Sprint 2 · Thiết kế",
+    "stories": [
+      "US-009",
+      "US-010",
+      "US-012",
+      "US-013"
+    ],
+    "group": "Sprint 2 · Thu phí & vận hành"
+  },
+  {
+    "key": "28-mobile-hoa-don",
+    "title": "Cư dân · Thu phí trên điện thoại",
+    "phase": "Sprint 2 · Thiết kế",
+    "stories": [
+      "US-009",
+      "US-012",
+      "US-013"
+    ],
+    "group": "Sprint 2 · Thu phí & vận hành"
+  },
+  {
+    "key": "29-thay-hoa-don",
+    "title": "Sửa sai · Hủy và thay hóa đơn",
+    "phase": "Sprint 2 · Thiết kế",
+    "stories": [
+      "US-008",
+      "US-019"
+    ],
+    "group": "Sprint 2 · Thu phí & vận hành"
+  },
+  {
+    "key": "30-chuyen-ho",
+    "title": "Chuyển hộ & bảo toàn nợ cũ",
+    "phase": "Sprint 2 · Thiết kế",
+    "stories": [
+      "US-002",
+      "US-004",
+      "US-012",
+      "US-019"
+    ],
+    "group": "Sprint 2 · Thu phí & vận hành"
+  },
+  {
+    "key": "31-mat-ket-noi",
+    "title": "Mất phản hồi · Thử lại an toàn",
+    "phase": "Sprint 2 · Thiết kế",
+    "stories": [
+      "US-010"
+    ],
+    "group": "Sprint 2 · Thu phí & vận hành"
+  },
+  {
+    "key": "32-preview-cu",
+    "title": "Preview lỗi thời / thiếu dữ liệu",
+    "phase": "Sprint 2 · Thiết kế",
+    "stories": [
+      "US-008"
+    ],
+    "group": "Sprint 2 · Thu phí & vận hành"
+  },
+  {
+    "key": "33-huy-dong-gop",
+    "title": "Hủy đóng góp · Không đổi công nợ",
+    "phase": "Sprint 2 · Thiết kế",
+    "stories": [
+      "US-011",
+      "US-019"
+    ],
+    "group": "Sprint 2 · Thu phí & vận hành"
+  },
+  {
+    "key": "34-quy-da-dong",
+    "title": "Quỹ đã đóng · Chặn thu mới",
+    "phase": "Sprint 2 · Thiết kế",
+    "stories": [
+      "US-007",
+      "US-011"
+    ],
+    "group": "Sprint 2 · Thu phí & vận hành"
+  },
+  {
+    "key": "35-xac-nhan-quyen",
+    "title": "Xác nhận đổi vai trò",
+    "phase": "Sprint 2 · Thiết kế",
+    "stories": [
+      "US-018",
+      "US-019"
+    ],
+    "group": "Sprint 2 · Thu phí & vận hành"
+  },
+  {
+    "key": "36-khong-ket-qua",
+    "title": "Không có kết quả · Giữ bộ lọc",
+    "phase": "Sprint 2 · Thiết kế",
+    "stories": [
+      "US-008",
+      "US-012"
+    ],
+    "group": "Sprint 2 · Thu phí & vận hành"
+  },
+  {
+    "key": "37-cu-dan-bien-lai",
+    "title": "Biên lai của hộ gia đình",
+    "phase": "Sprint 2 · Thiết kế",
+    "stories": [
+      "US-010",
+      "US-013"
+    ],
+    "group": "Sprint 2 · Thu phí & vận hành"
+  },
+  {
+    "key": "38-cu-dan-bien-nhan",
+    "title": "Biên nhận ủng hộ của hộ",
+    "phase": "Sprint 2 · Thiết kế",
+    "stories": [
+      "US-011",
+      "US-013"
+    ],
+    "group": "Sprint 2 · Thu phí & vận hành"
+  },
+  {
+    "key": "39-giay-bao",
+    "title": "Giấy báo phí · Bản in",
+    "phase": "Sprint 2 · Thiết kế",
+    "stories": [
+      "US-009"
+    ],
+    "group": "Sprint 2 · Thu phí & vận hành"
+  },
+  {
+    "key": "40-bao-cao-thuc-thu",
+    "title": "Báo cáo · Tháng thực thu",
+    "phase": "Sprint 2 · Thiết kế",
+    "stories": [
+      "US-014"
+    ],
+    "group": "Sprint 2 · Thu phí & vận hành"
+  },
+  {
+    "key": "41-xac-nhan-dong-quy",
+    "title": "Xác nhận đóng đợt quỹ",
+    "phase": "Sprint 2 · Thiết kế",
+    "stories": [
+      "US-007"
+    ],
+    "group": "Sprint 2 · Thu phí & vận hành"
+  },
+  {
+    "key": "42-bien-lai-da-huy",
+    "title": "Biên lai có dấu ĐÃ HỦY",
+    "phase": "Sprint 2 · Thiết kế",
+    "stories": [
+      "US-010",
+      "US-013",
+      "US-019"
+    ],
+    "group": "Sprint 2 · Thu phí & vận hành"
+  },
+  {
+    "key": "43-cu-dan-giay-bao",
+    "title": "Cư dân · Xem giấy báo",
+    "phase": "Sprint 2 · Thiết kế",
+    "stories": [
+      "US-009",
+      "US-012"
+    ],
+    "group": "Sprint 2 · Thu phí & vận hành"
+  }
+]

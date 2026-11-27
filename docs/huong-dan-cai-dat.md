@@ -66,7 +66,7 @@ npm run dev
 
 Nếu mọi thứ ổn, terminal sẽ báo `BlueMoon SE09 API http://127.0.0.1:3001`. Bạn có thể mở trình duyệt vào `http://127.0.0.1:3001/api/health`, thấy trả về `{"ok":true}` là backend đã chạy bình thường.
 
-Một điểm nhỏ hay làm mọi người nhầm: lệnh `npm run seed` chỉ tạo tài khoản quản trị nếu `ADMIN_USERNAME` chưa tồn tại trong database. Nếu sau này bạn sửa `ADMIN_PASSWORD` trong `.env` rồi chạy lại `npm run seed`, mật khẩu cũ sẽ không tự đổi theo đâu. Muốn đổi mật khẩu thì đăng nhập vào web rồi đổi trong mục hồ sơ.
+Một điểm cần biết về `npm run seed`: ngoài tài khoản quản trị `admin` / `admin123`, script còn tự động khởi tạo bộ dữ liệu mẫu thực tế gồm tài khoản BQT (`bqt01` / `123456`), tài khoản cư dân đã duyệt (`cudan050` / `123456`), tài khoản cư dân chờ duyệt (`cudan102` / `123456`), 6 căn hộ mẫu và 10 nhân khẩu có đủ CCCD cùng lịch sử cư trú để bạn kiểm thử ngay. Script chạy an toàn nhiều lần (chỉ tạo mới nếu dữ liệu chưa tồn tại).
 
 ## Bước 4: Cài thư viện và chạy frontend
 

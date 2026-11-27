@@ -123,9 +123,9 @@ Tài liệu này cung cấp đặc tả chi tiết **12 khung Prototype / Wirefr
 
 Để chuẩn bị làm 11 User Stories của Sprint 2 (`US-006`..`014`, `US-018`..`019`), toàn bộ các màn hình mới kế thừa thống nhất khung **`WF-BASE` (`AppLayout.jsx`)**:
 
-1. **Vùng Sidebar điều hướng phân quyền theo `user.role` (`240px` bên trái):**
-   - Nhóm menu Sprint 1 (Đã có): *Trang chủ & Căn hộ*, *Hộ & Nhân khẩu*, *Cấp tài khoản BQT*, *Hồ sơ cá nhân*.
-   - Nhóm menu chờ gắn ở Sprint 2: *Đơn giá & Quỹ tự nguyện (`US-006, 007`)*, *Bảng thu tháng & Công nợ (`US-008, 009, 012`)*, *Thu phí & Biên lai (`US-010, 011`)*, *Lịch sử & Xuất báo cáo (`US-013, 014`)*, *Phân quyền & Nhật ký Audit (`US-018, 019`)*.
+1. **Vùng Thanh điều hướng phân quyền theo `user.role` (`AppLayout.jsx`):**
+   - Nhóm menu Sprint 1 (Đã hoàn thiện): *Màn hình chính (`/`, căn hộ & sửa nhanh; với `RESIDENT` là cổng xem hồ sơ hộ gia đình)*, *Hộ và nhân khẩu (`/residents`, thêm/sửa nhanh, CCCD, đổi chủ hộ 1-click, cư trú, xuất Excel)*, *Cấp tài khoản cư dân (`/resident-accounts`, duyệt 1-click yêu cầu cư dân tự đăng ký & đặt lại mật khẩu)*, *Hồ sơ cá nhân (`/profile`)*, *Cấp tài khoản (`/accounts`, dành cho `ADMIN`)*.
+   - Nhóm menu chờ gắn ở Sprint 2 (Gom gọn tối đa chỉ thêm 2 mục): *Thu phí & Công nợ (`/billing` — tích hợp `US-006, 008, 009, 010, 012, 013, 014`)* và *Quỹ tự nguyện (`/campaigns` — tích hợp `US-007, 011`)*. Các chức năng *Phân quyền 1-click & Nhật ký Audit (`US-018, 019`)* tích hợp trực tiếp vào trang `/accounts` của `ADMIN`.
 2. **Vùng Filter & Action Bar (Card phía trên):**
    - Chuẩn hóa bộ chọn Kỳ thu (`YYYY-MM`), chọn Căn hộ (`apartments.room_number`), nút hành động chính (`Primary Button`) và nút Xuất Excel / In chứng từ (`Secondary Action`).
 3. **Vùng Data Table & Printable Modal (Giấy báo `US-009` / Biên lai `US-010`):**

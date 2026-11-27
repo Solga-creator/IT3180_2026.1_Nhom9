@@ -1,7 +1,30 @@
+import crypto from "node:crypto";
 import jwt from "jsonwebtoken";
 import { findUserById, toPublicUser } from "../repositories/userRepository.js";
 
-const SECRET = process.env.JWT_SECRET || "se09-dev-only-not-for-production";
+const EPHEMERAL_TEST_SECRET =
+  process.env.NODE_ENV === "test" ||
+  Boolean(process.env.NODE_TEST_CONTEXT) ||
+  process.execArgv.some((arg) => arg.startsWith("--test"))
+    ? crypto.randomBytes(32).toString("hex")
+    : "";
+
+export function assertJwtConfigured(env = process.env) {
+  const secret = String(env?.JWT_SECRET || "").trim();
+  if (!secret) {
+    throw new Error(
+      "Thiếu cấu hình bắt buộc JWT_SECRET trong biến môi trường. Server dừng khởi động để đảm bảo an toàn.",
+    );
+  }
+  return secret;
+}
+
+function getSigningSecret() {
+  const configured = String(process.env.JWT_SECRET || "").trim();
+  if (configured) return configured;
+  if (EPHEMERAL_TEST_SECRET) return EPHEMERAL_TEST_SECRET;
+  return assertJwtConfigured(process.env);
+}
 
 export function signToken(user) {
   return jwt.sign(
@@ -9,8 +32,9 @@ export function signToken(user) {
       sub: user.id,
       role: user.role,
       username: user.username,
+      tokenVersion: Number(user.token_version ?? user.tokenVersion ?? 0),
     },
-    SECRET,
+    getSigningSecret(),
     {
       expiresIn: "12h",
     },
@@ -28,12 +52,20 @@ export async function requireAuth(req, res, next) {
   }
 
   try {
-    const payload = jwt.verify(token, SECRET);
+    const payload = jwt.verify(token, getSigningSecret());
     const user = await findUserById(payload.sub);
-    if (!user) {
+    if (!user || user.account_status === "PENDING") {
       return res.status(401).json({
         success: false,
         message: "Tài khoản không còn hiệu lực.",
+      });
+    }
+    const tokenVersion = Number(payload.tokenVersion ?? 0);
+    const currentVersion = Number(user.token_version ?? 0);
+    if (tokenVersion !== currentVersion) {
+      return res.status(401).json({
+        success: false,
+        message: "Phiên đăng nhập đã hết hiệu lực. Vui lòng đăng nhập lại.",
       });
     }
 

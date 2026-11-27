@@ -1,5 +1,7 @@
 import {
+  editApartment,
   getApartments as fetchApartments,
+  removeApartment,
   saveApartment,
 } from "../../services/apartmentService.js";
 
@@ -16,6 +18,22 @@ export async function getApartments(_req, res) {
   return res.json({
     success: true,
     apartments,
+  });
+}
+
+export async function updateApartment(req, res) {
+  const apartment = await editApartment(req.params.id, req.body);
+  return res.json({
+    success: true,
+    apartment,
+  });
+}
+
+export async function deleteApartment(req, res) {
+  const roomNumber = await removeApartment(req.params.id);
+  return res.json({
+    success: true,
+    roomNumber,
   });
 }
 

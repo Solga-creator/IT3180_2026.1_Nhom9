@@ -1,15 +1,30 @@
+import crypto from "node:crypto";
 import bcrypt from "bcrypt";
 import {
+  clearFailedLogin,
   countAdmins,
   createUser,
   deleteUser,
   findUserById,
   findUserByUsername,
   listUsers,
+  updatePassword,
 } from "../repositories/userRepository.js";
 import { debug } from "../helpers/debug.js";
 import { AppError } from "../helpers/AppError.js";
 import { validateAccountIssue } from "../validators/accountValidation.js";
+
+const TEMP_PW_CHARS =
+  "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+
+export function generateTemporaryPassword(length = 8) {
+  const bytes = crypto.randomBytes(length);
+  let out = "";
+  for (let i = 0; i < length; i += 1) {
+    out += TEMP_PW_CHARS[bytes[i] % TEMP_PW_CHARS.length];
+  }
+  return out;
+}
 
 export async function issueAccount(input) {
   const username = String(input?.username || "").trim();
@@ -73,4 +88,34 @@ export async function removeAccount(idInput, currentUserId) {
   await deleteUser(id);
   debug("deleted account", target.username);
   return target.username;
+}
+
+export async function resetStaffPassword(idInput, newPasswordInput) {
+  const id = Number(idInput);
+  if (!Number.isInteger(id) || id <= 0) {
+    throw new AppError(400, "Tài khoản không hợp lệ.");
+  }
+
+  const customPw =
+    typeof newPasswordInput === "string" ? newPasswordInput.trim() : "";
+  const newPassword = customPw || generateTemporaryPassword(8);
+  if (newPassword.length < 6) {
+    throw new AppError(400, "Mật khẩu đặt lại tối thiểu 6 ký tự.");
+  }
+
+  const target = await findUserById(id);
+  if (!target || target.role === "RESIDENT") {
+    throw new AppError(404, "Tài khoản không tồn tại.");
+  }
+
+  const passwordHash = await bcrypt.hash(newPassword, 10);
+  await updatePassword(id, passwordHash, { mustChangePassword: true });
+  await clearFailedLogin(id);
+  debug("reset staff password", target.username);
+  return {
+    username: target.username,
+    temporaryPassword: newPassword,
+    defaultPassword: newPassword,
+    mustChangePassword: true,
+  };
 }

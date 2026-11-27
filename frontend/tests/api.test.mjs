@@ -29,4 +29,20 @@ test("US-005: tải blob có JWT; giữ lỗi JSON và hành vi API JSON cũ", a
   });
   response = Response.json({ residents: [] });
   assert.deepEqual(await api("/api/residents"), { residents: [] });
+
+  response = new Response("Internal Error", { status: 502 });
+  await assert.rejects(api("/api/residents"), {
+    status: 502,
+    message:
+      "Máy chủ đang bận hoặc gặp sự cố. Vui lòng thử lại sau hoặc liên hệ quản trị viên.",
+  });
+
+  t.mock.method(globalThis, "fetch", async () => {
+    throw new TypeError("Failed to fetch");
+  });
+  await assert.rejects(api("/api/residents"), {
+    status: 0,
+    message:
+      "Không thể kết nối tới máy chủ. Vui lòng kiểm tra kết nối mạng hoặc thử lại sau; nếu vẫn lỗi hãy liên hệ quản trị viên.",
+  });
 });

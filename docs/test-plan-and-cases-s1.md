@@ -35,7 +35,7 @@ Xác minh toàn bộ 8 Must User Stories của Sprint 1 thỏa mãn Tiêu chí c
 
 ---
 
-## 2. Bộ Functional Test Cases Backend (Mục 8.2 — 40 Test Cases)
+## 2. Bộ Functional Test Cases Backend (Mục 8.2 — 50 Test Cases)
 
 | Mã TC | US | Mô tả trường hợp kiểm thử | File kiểm thử | Kỳ vọng |
 |---|---|---|---|---|
@@ -79,6 +79,16 @@ Xác minh toàn bộ 8 Must User Stories của Sprint 1 thỏa mãn Tiêu chí c
 | `FTC-38` | US-017 | Kiểm tra điều kiện đổi mật khẩu (bắt buộc mật khẩu cũ/mới, mật khẩu mới $\ge 6$ ký tự) | `backend/tests/authAndAccount.test.js` | Chặn mật khẩu rỗng hoặc $< 6$ ký tự |
 | `FTC-39` | US-017 | Cập nhật hồ sơ theo `userId` từ JWT và bỏ qua mọi trường lạ (`id`, `role`) gửi kèm trong body | `backend/tests/authAndAccount.test.js` | Chống IDOR / Mass Assignment |
 | `FTC-40` | US-017 | Đổi mật khẩu thành công sau khi `bcrypt.compare` mật khẩu hiện tại, chặn `400` nếu sai mật khẩu cũ | `backend/tests/authAndAccount.test.js` | Cập nhật `password_hash` mới |
+| `FTC-41` | US-001 | Service `editApartment` sửa nhanh diện tích/số phòng căn hộ và chặn `409` khi trùng số phòng khác | `backend/tests/apartmentService.test.js` | Cập nhật căn hộ thành công |
+| `FTC-42` | US-002 | Validation kiểm tra định dạng số CCCD/CMND (rỗng hoặc đúng 9/12 chữ số) | `backend/tests/residentValidation.test.js` | Chấp nhận 9/12 số, từ chối chuỗi sai |
+| `FTC-43` | US-002 | Service `editResident` cập nhật nhanh thông tin nhân khẩu và tự động chuyển quyền Chủ hộ trong 1 transaction | `backend/tests/residentService.test.js` | Đổi `head_resident_id` và quan hệ chuẩn xác |
+| `FTC-44` | US-016 | Khóa tạm tài khoản 5 phút (`423`) sau 5 lần đăng nhập sai liên tiếp và chặn đăng nhập (`403`) khi tài khoản đang `PENDING` | `backend/tests/authAndAccount.test.js` | Chống brute-force & kiểm soát phê duyệt |
+| `FTC-45` | US-015 | Cư dân tự đăng ký tài khoản (`PENDING`), BQT duyệt (`ACTIVE`), che CCCD thành viên khác từ API và chặn `403` khi nhân khẩu đã `"Chuyển đi"` | `backend/tests/authAndAccount.test.js` | Duyệt tài khoản, che CCCD & thu hồi quyền xem hộ cũ |
+| `FTC-46` | US-015, US-016 | Kiểm tra bắt buộc `JWT_SECRET`, sinh mật khẩu tạm ngẫu nhiên khi reset và thu hồi mọi token phiên cũ (`token_version`) | `backend/tests/authAndAccount.test.js` | Token cũ bị chặn `401` ngay sau khi reset/đổi mật khẩu |
+| `FTC-47` | US-001 | Service `removeApartment` xóa căn hộ trống và chặn `400` khi căn hộ đang có nhân khẩu | `backend/tests/apartmentService.test.js` | Bảo vệ toàn vẹn dữ liệu căn hộ–nhân khẩu |
+| `FTC-48` | US-002 | Service `removeResident` xóa nhân khẩu nhập thừa và chặn `400` nếu xóa Chủ hộ khi hộ vẫn còn thành viên khác | `backend/tests/residentService.test.js` | Xóa an toàn trong transaction |
+| `FTC-49` | US-004 | Sự kiện cư trú tương lai không ghi đè sai `current_status` hiện tại; sự kiện `"Chuyển đi"` không có ngày kết thúc tự động thu hồi phiên cư dân | `backend/tests/residentService.test.js` | Tính đúng theo ngày hiệu lực & thu hồi phiên |
+| `FTC-50` | US-003, US-004 | Tự động áp dụng sự kiện tương lai khi đến ngày hiệu lực, tự khôi phục khi tạm vắng hết hạn và trả kèm `householdHeadName` khi lọc theo `apartmentId` | `backend/tests/residentService.test.js` | Tính trạng thái động theo thời gian & lọc chuẩn |
 
 ---
 

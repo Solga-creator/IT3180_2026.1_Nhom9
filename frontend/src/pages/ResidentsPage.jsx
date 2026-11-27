@@ -1,5 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../services/api.js";
+import { AddResidentForm, ResidencyStatusForm } from "./ResidentForms.jsx";
+import { getBusinessDate } from "../../../shared/businessDate.mjs";
 
 const RELATIONSHIPS = [
   "Chủ hộ",
@@ -17,21 +20,51 @@ const RESIDENCY_STATUSES = [
   "Chuyển đến",
   "Chuyển đi",
 ];
-const MAX_BIRTH_DATE = new Date().toISOString().slice(0, 10);
+
+function formatDateVN(isoDate) {
+  if (!isoDate) return "—";
+  const parts = String(isoDate).slice(0, 10).split("-");
+  if (parts.length !== 3) return isoDate;
+  return `${parts[2]}/${parts[1]}/${parts[0]}`;
+}
+
+function formatRangeVN(startDate, endDate) {
+  if (!startDate) return "";
+  return endDate
+    ? `${formatDateVN(startDate)} – ${formatDateVN(endDate)}`
+    : `Từ ${formatDateVN(startDate)}`;
+}
 
 export default function ResidentsPage() {
+  const today = getBusinessDate();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeSearch = searchParams.get("search") || "";
+  const activeApartmentId = searchParams.get("apartmentId") || "";
+  const activeRoomLabel = searchParams.get("room") || "";
+
+  const nameInputRef = useRef(null);
   const [apartments, setApartments] = useState([]);
   const [residents, setResidents] = useState([]);
-  const [apartmentId, setApartmentId] = useState("");
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [apartmentId, setApartmentId] = useState(activeApartmentId);
   const [fullName, setFullName] = useState("");
   const [birthDate, setBirthDate] = useState("");
+  const [cccd, setCccd] = useState("");
   const [relationship, setRelationship] = useState("Chủ hộ");
-  const [searchInput, setSearchInput] = useState("");
-  const [activeSearch, setActiveSearch] = useState("");
+  const [searchInput, setSearchInput] = useState(activeSearch);
   const [selectedResidentId, setSelectedResidentId] = useState(null);
   const [residencyStatus, setResidencyStatus] = useState("Thường trú");
-  const [startDate, setStartDate] = useState("");
+  const [startDate, setStartDate] = useState(getBusinessDate);
   const [endDate, setEndDate] = useState("");
+  const [editingResidentId, setEditingResidentId] = useState(null);
+  const [editFullName, setEditFullName] = useState("");
+  const [editBirthDate, setEditBirthDate] = useState("");
+  const [editCccd, setEditCccd] = useState("");
+  const [editRelationship, setEditRelationship] = useState("Con");
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [confirmHeadPayload, setConfirmHeadPayload] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -39,45 +72,59 @@ export default function ResidentsPage() {
   const [exportStatus, setExportStatus] = useState("Thường trú");
   const [exporting, setExporting] = useState(false);
 
-  async function onExport(event) {
-    event.preventDefault();
-    setError("");
-    setMessage("");
-    setExporting(true);
-    try {
-      const query = new URLSearchParams({ status: exportStatus });
-      const blob = await api(`/api/residents/export?${query}`, {}, "blob");
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `nhan-khau-${exportStatus}.xlsx`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-      setMessage(`Đã tải danh sách nhân khẩu: ${exportStatus}.`);
-    } catch (exportError) {
-      setError(exportError.message);
-    } finally {
-      setExporting(false);
-    }
+  function apartmentHasHead(targetAptId, list = residents) {
+    const numId = Number(targetAptId);
+    if (!numId) return false;
+    return list.some(
+      (r) =>
+        Number(r.apartmentId) === numId &&
+        (r.relationship === "Chủ hộ" || Boolean(r.householdHeadId)),
+    );
   }
 
-  async function loadResidents(search = activeSearch) {
+  function handleApartmentSelect(nextAptId, list = residents) {
+    setApartmentId(nextAptId);
+    if (!nextAptId) return;
+    setRelationship(apartmentHasHead(nextAptId, list) ? "Con" : "Chủ hộ");
+  }
+
+  async function fetchResidentsList(searchVal = activeSearch, aptIdVal = activeApartmentId) {
     const query = new URLSearchParams();
-    if (search.trim()) query.set("search", search.trim());
+    if (searchVal.trim()) query.set("search", searchVal.trim());
+    if (aptIdVal) query.set("apartmentId", String(aptIdVal));
     const suffix = query.size ? `?${query.toString()}` : "";
     const data = await api(`/api/residents${suffix}`);
-    setResidents(data.residents || []);
+    const nextList = data.residents || [];
+    setResidents(nextList);
+    return nextList;
   }
 
   useEffect(() => {
     let active = true;
-    Promise.all([api("/api/apartments"), api("/api/residents")])
+    const query = new URLSearchParams();
+    if (activeSearch.trim()) query.set("search", activeSearch.trim());
+    if (activeApartmentId) query.set("apartmentId", String(activeApartmentId));
+    const suffix = query.size ? `?${query.toString()}` : "";
+
+    Promise.all([api("/api/apartments"), api(`/api/residents${suffix}`)])
       .then(([apartmentData, residentData]) => {
         if (!active) return;
-        setApartments(apartmentData.apartments || []);
-        setResidents(residentData.residents || []);
+        const apts = apartmentData.apartments || [];
+        const resList = residentData.residents || [];
+        setApartments(apts);
+        setResidents(resList);
+        if (activeApartmentId) {
+          setApartmentId(String(activeApartmentId));
+          setRelationship(
+            resList.some(
+              (r) =>
+                Number(r.apartmentId) === Number(activeApartmentId) &&
+                (r.relationship === "Chủ hộ" || Boolean(r.householdHeadId)),
+            )
+              ? "Con"
+              : "Chủ hộ",
+          );
+        }
       })
       .catch((loadError) => {
         if (active) setError(loadError.message);
@@ -89,7 +136,36 @@ export default function ResidentsPage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [activeSearch, activeApartmentId]);
+
+  async function onExport(event) {
+    event.preventDefault();
+    setError("");
+    setMessage("");
+    setExporting(true);
+    try {
+      const query = new URLSearchParams({ status: exportStatus });
+      const effectiveSearch = activeSearch.trim() || activeRoomLabel.trim();
+      if (activeSearch.trim()) query.set("search", activeSearch.trim());
+      if (activeApartmentId) query.set("apartmentId", activeApartmentId);
+      const blob = await api(`/api/residents/export?${query}`, {}, "blob");
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `nhan-khau-${exportStatus}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setMessage(
+        `Đã tải danh sách nhân khẩu (${exportStatus}${effectiveSearch ? ` · lọc: "${effectiveSearch}"` : ""}).`,
+      );
+    } catch (exportError) {
+      setError(exportError.message);
+    } finally {
+      setExporting(false);
+    }
+  }
 
   async function onAddResident(event) {
     event.preventDefault();
@@ -104,14 +180,21 @@ export default function ResidentsPage() {
           apartmentId,
           fullName,
           birthDate,
+          cccd,
           relationship,
         }),
       });
-      setMessage(`Đã thêm ${data.resident.fullName} vào căn ${data.resident.roomNumber}.`);
+      setMessage(
+        `Đã thêm ${data.resident.fullName} vào phòng ${data.resident.roomNumber}. Bạn có thể nhập tiếp thành viên khác của phòng này.`,
+      );
       setFullName("");
       setBirthDate("");
-      if (relationship === "Chủ hộ") setRelationship("Con");
-      await loadResidents();
+      setCccd("");
+      setRelationship("Con");
+      await fetchResidentsList();
+      setTimeout(() => {
+        nameInputRef.current?.focus();
+      }, 20);
     } catch (submitError) {
       setError(submitError.message);
     } finally {
@@ -119,20 +202,136 @@ export default function ResidentsPage() {
     }
   }
 
-  async function onSearch(event) {
+  function startEditResident(resident) {
+    setConfirmDeleteId(null);
+    setConfirmHeadPayload(null);
+    setEditingResidentId(resident.id);
+    setEditFullName(resident.fullName);
+    setEditBirthDate(resident.birthDate);
+    setEditCccd(resident.cccd || "");
+    setEditRelationship(resident.relationship);
+  }
+
+  async function onSaveResidentEdit(resident) {
+    if (resident.relationship !== "Chủ hộ" && editRelationship === "Chủ hộ") {
+      setEditingResidentId(null);
+      setConfirmHeadPayload({
+        resident,
+        fullName: editFullName,
+        birthDate: editBirthDate,
+        cccd: editCccd,
+      });
+      return;
+    }
+
+    setError("");
+    setMessage("");
+    setBusy(true);
+    try {
+      const data = await api(`/api/residents/${resident.id}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          fullName: editFullName,
+          birthDate: editBirthDate,
+          cccd: editCccd,
+          relationship: editRelationship,
+        }),
+      });
+      setMessage(`Đã cập nhật thông tin nhân khẩu ${data.resident.fullName}.`);
+      setEditingResidentId(null);
+      setResidents((prev) =>
+        prev.map((item) => (item.id === resident.id ? data.resident : item)),
+      );
+    } catch (editError) {
+      setError(editError.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onConfirmMakeHead() {
+    if (!confirmHeadPayload) return;
+    const { resident, fullName: nextName, birthDate: nextBirth, cccd: nextCccd } =
+      confirmHeadPayload;
+    setError("");
+    setMessage("");
+    setBusy(true);
+    try {
+      const data = await api(`/api/residents/${resident.id}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          fullName: nextName,
+          birthDate: nextBirth,
+          cccd: nextCccd,
+          relationship: "Chủ hộ",
+        }),
+      });
+      setMessage(
+        `Đã chuyển quyền Chủ hộ phòng ${data.resident.roomNumber} sang ${data.resident.fullName}.`,
+      );
+      setConfirmHeadPayload(null);
+      await fetchResidentsList();
+    } catch (headError) {
+      setError(headError.message);
+      setConfirmHeadPayload(null);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onDeleteResident(resident) {
+    setError("");
+    setMessage("");
+    setDeletingId(resident.id);
+    try {
+      await api(`/api/residents/${resident.id}`, { method: "DELETE" });
+      setMessage(`Đã xóa nhân khẩu ${resident.fullName} (phòng ${resident.roomNumber}).`);
+      setConfirmDeleteId(null);
+      if (selectedResidentId === resident.id) closeResidencyModal();
+      setResidents((prev) => prev.filter((item) => item.id !== resident.id));
+    } catch (delError) {
+      setError(delError.message);
+      setConfirmDeleteId(null);
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
+  function onSearch(event) {
     event.preventDefault();
     setError("");
     setMessage("");
-    setLoading(true);
-    try {
-      const search = searchInput.trim();
-      await loadResidents(search);
-      setActiveSearch(search);
-    } catch (searchError) {
-      setError(searchError.message);
-    } finally {
-      setLoading(false);
+    const trimmed = searchInput.trim();
+    if (trimmed !== activeSearch || activeApartmentId) {
+      setLoading(true);
     }
+    const nextParams = new URLSearchParams();
+    if (trimmed) {
+      nextParams.set("search", trimmed);
+    }
+    setSearchParams(nextParams);
+  }
+
+  function clearAllFilters() {
+    setSearchInput("");
+    if (activeSearch || activeApartmentId) {
+      setLoading(true);
+    }
+    setSearchParams({});
+  }
+
+  function openResidencyModal(resident) {
+    setSelectedResidentId(resident.id);
+    setResidencyStatus(resident.currentStatus || "Thường trú");
+    setStartDate(getBusinessDate());
+    setEndDate("");
+  }
+
+  function closeResidencyModal() {
+    setSelectedResidentId(null);
+    setResidencyStatus("Thường trú");
+    setStartDate(getBusinessDate());
+    setEndDate("");
   }
 
   async function onUpdateResidency(event) {
@@ -142,7 +341,7 @@ export default function ResidentsPage() {
     setBusy(true);
 
     try {
-      await api(`/api/residents/${selectedResidentId}/residency-events`, {
+      const data = await api(`/api/residents/${selectedResidentId}/residency-events`, {
         method: "POST",
         body: JSON.stringify({
           status: residencyStatus,
@@ -150,11 +349,11 @@ export default function ResidentsPage() {
           endDate,
         }),
       });
-      setMessage("Đã cập nhật tình trạng cư trú và lưu lịch sử.");
-      setSelectedResidentId(null);
-      setStartDate("");
-      setEndDate("");
-      await loadResidents();
+      setMessage(`Đã ghi nhận biến động cư trú cho ${data.resident.fullName}.`);
+      closeResidencyModal();
+      setResidents((prev) =>
+        prev.map((item) => (item.id === data.resident.id ? data.resident : item)),
+      );
     } catch (statusError) {
       setError(statusError.message);
     } finally {
@@ -165,82 +364,86 @@ export default function ResidentsPage() {
   const selectedResident = residents.find(
     (resident) => resident.id === selectedResidentId,
   );
+  const pendingHeadResident = confirmHeadPayload?.resident || null;
+  const currentHeadName = pendingHeadResident
+    ? pendingHeadResident.householdHeadName ||
+      residents.find(
+        (r) =>
+          r.householdId === pendingHeadResident.householdId &&
+          r.relationship === "Chủ hộ",
+      )?.fullName ||
+      "Chưa có chủ hộ"
+    : "";
 
   return (
     <section>
       <h1>Hộ và nhân khẩu</h1>
       <p className="hint">
-        Lưu chủ hộ trước, sau đó thêm các nhân khẩu còn lại của căn hộ.
+        Tra cứu nhanh theo số phòng hoặc họ tên. Bấm{" "}
+        <strong>+ Thêm cư dân</strong> khi cần nhập chủ hộ hoặc thành viên mới.
       </p>
 
       {error && <p className="error" role="alert">{error}</p>}
       {message && <p className="ok" role="status">{message}</p>}
 
-      <form className="card form" onSubmit={onAddResident}>
-        <h2>Thêm chủ hộ hoặc nhân khẩu</h2>
+      <form className="search-form" onSubmit={onSearch}>
         <label>
-          Căn hộ
-          <select
-            required
-            value={apartmentId}
-            onChange={(event) => setApartmentId(event.target.value)}
-          >
-            <option value="">Chọn căn hộ</option>
-            {apartments.map((apartment) => (
-              <option key={apartment.id} value={apartment.id}>
-                {apartment.roomNumber} ({apartment.area} m²)
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Họ và tên
+          Tìm theo số phòng hoặc họ tên
           <input
-            required
-            minLength={2}
-            maxLength={120}
-            value={fullName}
-            onChange={(event) => setFullName(event.target.value)}
+            value={searchInput}
+            onChange={(event) => setSearchInput(event.target.value)}
+            placeholder="Nhập số phòng (vd: 050) hoặc họ tên cần tìm"
           />
         </label>
-        <label>
-          Ngày sinh
-          <input
-            type="date"
-            required
-            max={MAX_BIRTH_DATE}
-            value={birthDate}
-            onChange={(event) => setBirthDate(event.target.value)}
-          />
-        </label>
-        <label>
-          Quan hệ với chủ hộ
-          <select
-            required
-            value={relationship}
-            onChange={(event) => setRelationship(event.target.value)}
-          >
-            {RELATIONSHIPS.map((item) => (
-              <option key={item} value={item}>{item}</option>
-            ))}
-          </select>
-        </label>
-        <button type="submit" disabled={busy || apartments.length === 0}>
-          {busy ? "Đang lưu…" : "Thêm nhân khẩu"}
+        <button type="submit" disabled={loading}>
+          {loading ? "Đang tìm…" : "Tìm"}
         </button>
-        {apartments.length === 0 && !loading && (
-          <p className="hint">Cần lưu căn hộ trước khi thêm chủ hộ.</p>
+        {(activeSearch || activeApartmentId) && (
+          <button
+            type="button"
+            className="link"
+            disabled={loading}
+            onClick={clearAllFilters}
+          >
+            Xóa lọc
+          </button>
         )}
+        <button
+          type="button"
+          onClick={() => {
+            setShowAddForm((prev) => {
+              const nextOpen = !prev;
+              if (nextOpen && activeApartmentId) {
+                handleApartmentSelect(String(activeApartmentId));
+              }
+              return nextOpen;
+            });
+          }}
+        >
+          {showAddForm ? "Ẩn form thêm" : "+ Thêm cư dân"}
+        </button>
       </form>
 
-      <form className="card form" onSubmit={onExport}>
-        <h2>Xuất danh sách nhân khẩu</h2>
-        <p className="hint">
-          Xuất toàn bộ nhân khẩu theo trạng thái hiện tại, kèm căn hộ trong hồ sơ.
-          Kết quả xuất không phụ thuộc ô tìm kiếm bên dưới.
+      {activeApartmentId && (
+        <p className="ok" role="status">
+          Đang lọc riêng các nhân khẩu của{" "}
+          <strong>Phòng {activeRoomLabel || activeApartmentId}</strong>.{" "}
+          <button
+            type="button"
+            className="link"
+            onClick={clearAllFilters}
+          >
+            Xem tất cả các phòng
+          </button>
         </p>
+      )}
+
+      <form className="search-form" onSubmit={onExport}>
         <label>
-          Trạng thái cư trú cần xuất
+          Xuất Excel theo trạng thái cư trú{" "}
+          {activeSearch || activeRoomLabel
+            ? `(đồng bộ bộ lọc "${activeSearch || activeRoomLabel}")`
+            : "(toàn bộ danh sách)"}
           <select
             value={exportStatus}
             onChange={(event) => setExportStatus(event.target.value)}
@@ -256,38 +459,83 @@ export default function ResidentsPage() {
         </button>
       </form>
 
-      <h2>Tra cứu hộ và nhân khẩu</h2>
-      <form className="search-form" onSubmit={onSearch}>
-        <label>
-          Số phòng hoặc họ tên
-          <input
-            value={searchInput}
-            onChange={(event) => setSearchInput(event.target.value)}
-            placeholder="Nhập số phòng hoặc tên cần tìm"
-          />
-        </label>
-        <button type="submit" disabled={loading}>
-          {loading ? "Đang tìm…" : "Tìm"}
-        </button>
-        {activeSearch && (
-          <button
-            type="button"
-            className="link"
-            disabled={loading}
-            onClick={() => {
-              setSearchInput("");
-              setActiveSearch("");
-              setLoading(true);
-              loadResidents("")
-                .catch((loadError) => setError(loadError.message))
-                .finally(() => setLoading(false));
-            }}
-          >
-            Xóa tìm kiếm
-          </button>
-        )}
-      </form>
+      {showAddForm && (
+        <AddResidentForm
+          apartments={apartments}
+          apartmentId={apartmentId}
+          onApartmentChange={(nextId) => handleApartmentSelect(nextId)}
+          fullName={fullName}
+          setFullName={setFullName}
+          nameInputRef={nameInputRef}
+          birthDate={birthDate}
+          setBirthDate={setBirthDate}
+          cccd={cccd}
+          setCccd={setCccd}
+          relationship={relationship}
+          setRelationship={setRelationship}
+          hasHeadForSelectedApartment={apartmentHasHead(apartmentId)}
+          busy={busy}
+          loading={loading}
+          onSubmit={onAddResident}
+          onClose={() => setShowAddForm(false)}
+        />
+      )}
 
+      {pendingHeadResident && (
+        <div className="modal-backdrop" role="dialog" aria-modal="true">
+          <div className="modal-card">
+            <h2>
+              Xác nhận đổi Chủ hộ (Phòng {pendingHeadResident.roomNumber})
+            </h2>
+            <p>
+              Chủ hộ hiện tại: <strong>{currentHeadName}</strong>
+              {" → "}
+              Chủ hộ mới: <strong>{confirmHeadPayload.fullName}</strong>
+            </p>
+            <p className="hint">
+              Lưu ý nghiệp vụ: Khi xác nhận, chủ hộ cũ ({currentHeadName}) sẽ chuyển sang quan hệ{" "}
+              <strong>&quot;Khác&quot;</strong>. Bạn có thể bấm Sửa trên các thành viên trong hộ để cập nhật lại quan hệ với chủ hộ mới nếu cần.
+            </p>
+            <div className="row-actions">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={onConfirmMakeHead}
+              >
+                {busy ? "Đang lưu…" : "Xác nhận đổi Chủ hộ"}
+              </button>
+              <button
+                type="button"
+                className="link"
+                onClick={() => setConfirmHeadPayload(null)}
+              >
+                Hủy
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {selectedResident && (
+        <ResidencyStatusForm
+          resident={selectedResident}
+          residencyStatus={residencyStatus}
+          setResidencyStatus={setResidencyStatus}
+          startDate={startDate}
+          setStartDate={setStartDate}
+          endDate={endDate}
+          setEndDate={setEndDate}
+          busy={busy}
+          onSubmit={onUpdateResidency}
+          onCancel={closeResidencyModal}
+        />
+      )}
+
+      <h2>
+        Danh sách nhân khẩu ({residents.length})
+        {activeSearch ? ` · Tìm: "${activeSearch}"` : ""}
+        {activeRoomLabel ? ` · Phòng: ${activeRoomLabel}` : ""}
+      </h2>
       {loading ? (
         <p className="muted">Đang tải danh sách…</p>
       ) : residents.length === 0 ? (
@@ -297,108 +545,207 @@ export default function ResidentsPage() {
           <table>
             <thead>
               <tr>
-                <th>Căn hộ</th>
-                <th>Họ tên</th>
-                <th>Ngày sinh</th>
-                <th>Quan hệ</th>
-                <th>Tình trạng cư trú</th>
-                <th>Lịch sử</th>
-                <th></th>
+                <th style={{ width: "80px" }}>Phòng</th>
+                <th>Họ và tên & Hồ sơ</th>
+                <th style={{ width: "130px" }}>Quan hệ</th>
+                <th style={{ width: "180px" }}>Trạng thái cư trú</th>
+                <th style={{ width: "260px" }}>Thao tác</th>
               </tr>
             </thead>
             <tbody>
               {residents.map((resident) => (
                 <tr key={resident.id}>
-                  <td>{resident.roomNumber}</td>
-                  <td><strong>{resident.fullName}</strong></td>
-                  <td>{resident.birthDate}</td>
-                  <td>{resident.relationship}</td>
+                  <td><strong>{resident.roomNumber}</strong></td>
                   <td>
-                    {resident.currentStatus}
+                    {editingResidentId === resident.id ? (
+                      <div style={{ display: "grid", gap: "0.4rem" }}>
+                        <input
+                          value={editFullName}
+                          onChange={(e) => setEditFullName(e.target.value)}
+                          placeholder="Họ và tên"
+                        />
+                        <input
+                          type="date"
+                          max={today}
+                          value={editBirthDate}
+                          onChange={(e) => setEditBirthDate(e.target.value)}
+                        />
+                        <input
+                          value={editCccd}
+                          placeholder="Số CCCD/CMND (9 hoặc 12 số)"
+                          onChange={(e) => setEditCccd(e.target.value)}
+                        />
+                      </div>
+                    ) : (
+                      <>
+                        <strong>{resident.fullName}</strong>
+                        <details>
+                          <summary className="hint">
+                            Chi tiết & Lịch sử ({resident.residencyHistory.length})
+                          </summary>
+                          <p className="hint" style={{ margin: "0.25rem 0" }}>
+                            Ngày sinh: <strong>{formatDateVN(resident.birthDate)}</strong>
+                            {" · "}
+                            CCCD: <strong>{resident.cccd || "Chưa cấp"}</strong>
+                            {resident.householdHeadName && (
+                              <>
+                                {" · "}
+                                Chủ hộ: <strong>{resident.householdHeadName}</strong>
+                              </>
+                            )}
+                          </p>
+                          {resident.residencyHistory.length === 0 ? (
+                            <p className="muted" style={{ margin: "0.2rem 0" }}>
+                              Chưa có lịch sử biến động cư trú.
+                            </p>
+                          ) : (
+                            <ul className="history-list" style={{ margin: "0.25rem 0" }}>
+                              {resident.residencyHistory.map((item) => (
+                                <li key={item.id}>
+                                  {item.status}: {formatRangeVN(item.startDate, item.endDate)}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </details>
+                      </>
+                    )}
+                  </td>
+                  <td>
+                    {editingResidentId === resident.id ? (
+                      <select
+                        value={editRelationship}
+                        onChange={(e) => setEditRelationship(e.target.value)}
+                      >
+                        {RELATIONSHIPS.map((rel) => (
+                          <option key={rel} value={rel}>
+                            {rel}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      resident.relationship
+                    )}
+                  </td>
+                  <td>
+                    <strong>{resident.currentStatus}</strong>
                     {resident.statusStartDate && (
                       <span className="muted">
-                        <br />{resident.statusStartDate} – {resident.statusEndDate}
+                        <br />
+                        {formatRangeVN(resident.statusStartDate, resident.statusEndDate)}
                       </span>
                     )}
                   </td>
                   <td>
-                    <details>
-                      <summary>{resident.residencyHistory.length} lần</summary>
-                      {resident.residencyHistory.length === 0 ? (
-                        <p className="muted">Chưa có lịch sử thay đổi.</p>
-                      ) : (
-                        <ul className="history-list">
-                          {resident.residencyHistory.map((item) => (
-                            <li key={item.id}>
-                              {item.status}: {item.startDate} – {item.endDate}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </details>
-                  </td>
-                  <td>
-                    <button
-                      type="button"
-                      className="link"
-                      onClick={() => setSelectedResidentId(resident.id)}
-                    >
-                      Cập nhật trạng thái
-                    </button>
+                    {editingResidentId === resident.id ? (
+                      <span className="row-actions">
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => onSaveResidentEdit(resident)}
+                        >
+                          Lưu
+                        </button>
+                        <button
+                          type="button"
+                          className="link"
+                          onClick={() => setEditingResidentId(null)}
+                        >
+                          Hủy
+                        </button>
+                      </span>
+                    ) : confirmDeleteId === resident.id ? (
+                      <span className="row-actions">
+                        <button
+                          type="button"
+                          className="danger"
+                          disabled={deletingId === resident.id}
+                          onClick={() => onDeleteResident(resident)}
+                        >
+                          {deletingId === resident.id ? "Đang xóa…" : "Xác nhận xóa"}
+                        </button>
+                        <button
+                          type="button"
+                          className="link"
+                          onClick={() => setConfirmDeleteId(null)}
+                        >
+                          Hủy
+                        </button>
+                      </span>
+                    ) : (
+                      <span className="row-actions">
+                        <button
+                          type="button"
+                          className="link"
+                          onClick={() => openResidencyModal(resident)}
+                        >
+                          Đổi cư trú
+                        </button>
+                        <button
+                          type="button"
+                          className="link"
+                          onClick={() => startEditResident(resident)}
+                        >
+                          Sửa
+                        </button>
+                        <details>
+                          <summary className="hint" style={{ cursor: "pointer" }}>
+                            Thêm ▾
+                          </summary>
+                          <div className="row-actions" style={{ marginTop: "0.35rem" }}>
+                            {resident.relationship !== "Chủ hộ" && (
+                              <button
+                                type="button"
+                                className="link"
+                                disabled={busy}
+                                onClick={() => {
+                                  setConfirmDeleteId(null);
+                                  setEditingResidentId(null);
+                                  setConfirmHeadPayload({
+                                    resident,
+                                    fullName: resident.fullName,
+                                    birthDate: resident.birthDate,
+                                    cccd: resident.cccd || "",
+                                  });
+                                }}
+                              >
+                                Đặt chủ hộ
+                              </button>
+                            )}
+                            {resident.currentStatus !== "Chuyển đi" && (
+                              <button
+                                type="button"
+                                className="link"
+                                onClick={() =>
+                                  navigate(
+                                    `/resident-accounts?residentId=${resident.id}&room=${encodeURIComponent(resident.roomNumber)}`,
+                                  )
+                                }
+                              >
+                                Cấp TK
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              className="danger"
+                              onClick={() => {
+                                setConfirmHeadPayload(null);
+                                setEditingResidentId(null);
+                                setConfirmDeleteId(resident.id);
+                              }}
+                            >
+                              Xóa
+                            </button>
+                          </div>
+                        </details>
+                      </span>
+                    )}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-      )}
-
-      {selectedResident && (
-        <form className="card form" onSubmit={onUpdateResidency}>
-          <h2>Cập nhật cư trú: {selectedResident.fullName}</h2>
-          <label>
-            Trạng thái
-            <select
-              value={residencyStatus}
-              onChange={(event) => setResidencyStatus(event.target.value)}
-            >
-              {RESIDENCY_STATUSES.map((item) => (
-                <option key={item} value={item}>{item}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Ngày bắt đầu
-            <input
-              type="date"
-              required
-              value={startDate}
-              onChange={(event) => setStartDate(event.target.value)}
-            />
-          </label>
-          <label>
-            Ngày kết thúc
-            <input
-              type="date"
-              required
-              min={startDate || undefined}
-              value={endDate}
-              onChange={(event) => setEndDate(event.target.value)}
-            />
-          </label>
-          <div className="row-actions">
-            <button type="submit" disabled={busy}>
-              {busy ? "Đang lưu…" : "Xác nhận"}
-            </button>
-            <button
-              type="button"
-              className="link"
-              onClick={() => setSelectedResidentId(null)}
-            >
-              Hủy
-            </button>
-          </div>
-        </form>
       )}
     </section>
   );

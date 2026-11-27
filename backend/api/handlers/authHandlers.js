@@ -38,9 +38,10 @@ export async function saveProfile(req, res) {
 }
 
 export async function changePassword(req, res) {
-  await updatePassword(req.user.id, req.body);
+  const result = await updatePassword(req.user.id, req.body);
   return res.json({
     success: true,
     message: "Đổi mật khẩu thành công.",
+    ...(result || {}),
   });
 }
