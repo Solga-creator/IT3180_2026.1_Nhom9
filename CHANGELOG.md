@@ -1,5 +1,7 @@
 # Tổng hợp Thay đổi (Changelog) — BlueMoon SE09
 
+> **Lần dọn Drive tiếp theo ngày 28/11/2026:** Theo yêu cầu lưu hiện vật ngoài GitHub, đã đưa 43 SVG trùng ở folder `figma-import` rời và 14 bản tài liệu repo cũ trong `01_Tai_lieu` của gói Drive vào thùng rác (57 file, không xóa vĩnh viễn). Hai folder chứa chúng còn rỗng do công cụ Trash chỉ hỗ trợ từng file. Đã sửa README native và index.html trên Drive, thêm `HUONG_DAN_THU_MUC_DRIVE.txt`. Bộ chuẩn 43 SVG và 18 Excel được đọc lại xác nhận còn đủ; nguồn sơ đồ/ảnh xuất không thiếu file theo đối chiếu danh sách local. Không tải thêm 9 tài liệu Markdown thuộc repo, không push GitHub, không sửa nội dung Excel. Bộ local đầy đủ vẫn giữ nguyên tài liệu; các ghi chú “chưa upload” bên dưới là trạng thái của lần đóng gói trước.
+
 > **Trạng thái cập nhật 28/11/2026:** Bản tổng hợp thay đổi local phục vụ rà soát. Chưa push GitHub hay đồng bộ Drive trong lần cập nhật này; các cột đóng gói ở Phần II chỉ là đề xuất. Sprint 2 vẫn là thiết kế/kế hoạch, chưa triển khai chức năng tài chính.
 >
 > **Mốc đối chiếu:** Nhánh `main` gốc tại commit `66dd8fc` (`ci: enable auto-deploy to bluemoon-pied.vercel.app`) và bộ tài liệu khởi tạo ban đầu trong thư mục gốc dự án.
@@ -75,11 +77,11 @@
 | `frontend/tests/api.test.mjs` | Thêm test lỗi mạng (`status: 0`) và lỗi máy chủ (`502`). |
 
 - **Bằng chứng kiểm thử hiện được ghi nhận** (đối chiếu [báo cáo S1](docs/test-report-s1.md) và [README](README.md)):
-  - Baseline lịch sử trong báo cáo là **58/58**; đây không phải kết quả chạy lại toàn bộ code hiện tại.
-  - Lần xác minh hồi quy đã ghi nhận sau sửa xuất Excel/ngày Việt Nam/lọc căn: **25 test backend liên quan + 1 test frontend API đạt**, lint đạt; build thành công vào thư mục tạm do `dist/assets` hiện có lỗi quyền.
-  - Chưa có bằng chứng chạy lại toàn bộ suite được lưu trong bộ báo cáo hiện tại, nên **không khẳng định `60/60 PASS`** chỉ bằng cách cộng hai test mới vào baseline. Các test API hiện có dùng mock DB, không thay thế nghiệm thu trên DB thật.
-  - T00 cần chạy lại `npm test` và `npm run test:e2e` trong backend, `node --test tests/api.test.mjs` và `npm run lint` trong frontend; lưu ngày chạy, phiên bản code kèm trạng thái working tree/diff, lệnh, số pass/fail/skip và log, rồi cập nhật đồng thời README/báo cáo/changelog theo kết quả thực tế.
-  - Lần cập nhật tài liệu 28/11/2026 này kiểm tra nội dung và liên kết; không chạy lại test ứng dụng và không thay đổi baseline kiểm thử.
+  - **Cập nhật chạy thực tế ngày 28/11/2026** *(nền commit `b065008` + working tree local sau khi thực hiện plan rà soát cuối Sprint 1)*:
+    - Đã sửa `listResidents` / `listResidentsByStatus` lọc trạng thái hiệu lực ngày VN (`BUG-S1-06`); đồng nhất điều kiện ứng viên/đăng ký/cấp/duyệt/đăng nhập/xem hộ qua `getEffectiveResidencyStatuses` và thu hồi `token_version` trong transaction khi ghi bù `"Chuyển đi"` (`BUG-S1-07`); khóa `SELECT ... FOR UPDATE` trong transaction khi xóa căn hộ trống (`deleteEmptyApartmentById` — `BUG-S1-08`); đồng bộ vòng đời tải danh sách, giữ modal khi reload, tách tải `/api/apartments`, khóa form theo prop `submitting` khi POST thêm cư dân và giữ `search`/`status` khi bấm *"Xem tất cả các phòng"* trên `ResidentsPage.jsx` & `ResidentForms.jsx` (`BUG-S1-09`).
+    - Chạy lại toàn bộ suite tự động: **70/70 PASS** (`0 fail`, `0 skip`: `56` backend `npm test` + `8` backend `npm run test:e2e` + `6` frontend `node --test tests/*.test.mjs` gồm file untracked `residentsRefresh.test.mjs`); `oxlint` **0 warnings, 0 errors**.
+    - `npm run build` mặc định vẫn gặp lỗi quyền `EPERM` tại `frontend/dist/assets`; `npm run build -- --outDir node_modules/.cache/s1-final-review-verify` **PASS** (37 modules, 118ms).
+    - **Phần chưa xác minh:** các test có tương tác dữ liệu ở backend dùng mock DB (chưa chạy MySQL thật), `residentsRefresh.test.mjs` là hook/effect harness (chưa kiểm tra thủ công DOM/StrictMode trên trình duyệt desktop / `390px`). Các điều kiện còn lại của T00 (tạo DB thử riêng, chốt baseline commit, chốt quyết định `DEC-01`..`DEC-11` và ước lượng lại Sprint 2) chưa đánh dấu Done.
 
 ---
 

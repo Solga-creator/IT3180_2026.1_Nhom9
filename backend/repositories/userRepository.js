@@ -187,7 +187,6 @@ export async function listResidentsWithoutAccount() {
      JOIN apartments a ON a.id = h.apartment_id
      LEFT JOIN users u ON u.resident_id = r.id
      WHERE u.id IS NULL
-       AND r.current_status <> 'Chuyển đi'
      ORDER BY a.room_number ASC, r.id ASC`,
   );
   return rows;
@@ -259,6 +258,8 @@ export async function findResidenceForUser(userId) {
       r.cccd,
       r.relationship_to_head,
       r.current_status,
+      DATE_FORMAT(r.status_start_date, '%Y-%m-%d') AS status_start_date,
+      DATE_FORMAT(r.status_end_date, '%Y-%m-%d') AS status_end_date,
       a.id AS apartment_id,
       a.room_number,
       a.area

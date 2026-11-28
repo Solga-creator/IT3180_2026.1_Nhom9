@@ -27,6 +27,6 @@ npm run test:e2e
 
 # 3. Chạy kiểm thử lớp gọi API ở Frontend & kiểm tra đóng gói build
 cd ../frontend
-node --test tests/api.test.mjs
+node --test tests/*.test.mjs
 npm run build
 ```

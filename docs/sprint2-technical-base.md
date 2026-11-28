@@ -27,9 +27,9 @@ Toàn bộ 11 User Stories của Sprint 2 (`US-006`..`014`, `US-018`..`019`) k�
 
 ---
 
-## 2. Thiết kế CSDL Sprint 2 (7 Bảng Mới → Tổng 12 Bảng Toàn Dự Án)
+## 2. Thiết kế CSDL Sprint 2 (6 Bảng Mới → Tổng 11 Bảng Toàn Dự Án)
 
-Thiết kế gồm **6 bảng tài chính/kiểm toán và 1 bảng lịch sử diện tích**, nối vào 5 bảng Sprint 1. Đồng thời mở rộng vòng đời hộ trên bảng hiện có, không tạo thêm bảng hộ trùng chức năng. Mục tiêu là toàn vẹn tài chính, bất biến chứng từ và phản hồi dưới 2 giây trong điều kiện nghiệm thu tại mục 3.11.
+Thiết kế gồm **6 bảng tài chính/kiểm toán**, nối vào 5 bảng Sprint 1 *(đã chốt ngày 28/11/2026 theo DEC-02/03: không tạo bảng `apartment_area_versions` và giữ nguyên mô hình 1 hộ/căn `UNIQUE(apartment_id)` của Sprint 1 trong v1.0)*. Mục tiêu là toàn vẹn tài chính, bất biến chứng từ và phản hồi dưới 2 giây trong điều kiện nghiệm thu tại mục 3.11.
 
 1. **`fee_rate_configs` (`US-006`)**: Lưu cấu hình đơn giá và lịch sử thay đổi đơn giá của 2 loại phí bắt buộc:
    - `id INT AUTO_INCREMENT PRIMARY KEY`
@@ -95,13 +95,9 @@ Thiết kế gồm **6 bảng tài chính/kiểm toán và 1 bảng lịch sử 
    - `before_data JSON NULL`, `after_data JSON NULL` (lưu trạng thái dữ liệu trước và sau thao tác)
    - `reason VARCHAR(255) NULL`, `summary VARCHAR(255) NOT NULL`, `created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`
 
-7. **`apartment_area_versions` (`US-001`, `US-008`)**: `id`, `apartment_id`, `area DECIMAL(10,2)`, `effective_from DATE`, `recorded_by`, `reason`, `created_at`, `UNIQUE(apartment_id, effective_from)`. Lấy phiên bản mới nhất có hiệu lực không muộn hơn ngày đầu kỳ. `apartments.area` tiếp tục phục vụ hiển thị hiện tại; sửa diện tích từ Sprint 2 phải ghi lịch sử trong cùng transaction. Không tự suy diễn diện tích quá khứ từ giá trị hiện tại.
-
-**Mở rộng bảng Sprint 1 để bảo toàn lịch sử:**
-- `households`: thêm `starts_on DATE`, `ends_on DATE NULL`; khoảng cư trú là `[starts_on, ends_on)`. Bỏ `UNIQUE(apartment_id)` cũ, thay bằng cột generated `open_apartment_id = CASE WHEN ends_on IS NULL THEN apartment_id ELSE NULL END` và `UNIQUE(open_apartment_id)`. Trong transaction khóa dòng căn hộ, kiểm tra không chồng khoảng trước khi đóng hộ cũ/mở hộ mới; ràng buộc generated chỉ bảo vệ hộ chưa kết thúc, không thay thế kiểm tra khoảng thời gian.
-- `residents`: thêm `joined_household_on DATE` để giới hạn kỳ hóa đơn một thành viên mới được xem. Khi kết thúc hộ, giữ nhân khẩu/lịch sử và thu hồi quyền cũ; nếu một người quay lại theo hộ mới thì tạo hồ sơ cư trú mới và liên kết lại tài khoản trong thao tác có audit.
-- Migration không gán bừa ngày lịch sử: dùng mốc bắt đầu quản lý đã được nhóm xác nhận. Chặn sinh kỳ trước mốc có đủ dữ liệu hộ, diện tích và giá; không dùng ngày `created_at` như bằng chứng ngày chuyển đến.
-- API thêm chủ hộ phải tạo hộ mới khi không có hộ đang mở; API danh sách căn hộ/nhân khẩu phải phân biệt hộ hiện tại với hộ lưu trữ. Luồng xóa Sprint 1 phải chặn xóa dữ liệu đã được hóa đơn/đóng góp tham chiếu; dùng kết thúc hộ/lưu trữ thay thế. Không áp dụng `ON DELETE CASCADE` lên chứng từ tài chính.
+**Bảo toàn dữ liệu Sprint 1 (cập nhật theo DEC-02/03 ngày 28/11/2026):**
+- Giữ nguyên bảng `households` (`UNIQUE(apartment_id)`) và `residents` của Sprint 1; **không** thêm bảng `apartment_area_versions`, **không** thêm `starts_on`/`ends_on`/`open_apartment_id` hay luồng chuyển giao hộ A → B trong v1.0.
+- Luồng xóa Sprint 1 (`deleteEmptyApartmentById`, `removeResident`, `removeAccount`) phải chặn xóa dữ liệu đã được hóa đơn/giao dịch/đóng góp tham chiếu. Các FK từ chứng từ tài chính sang `apartments`, `households`, `users` dùng `ON DELETE RESTRICT`, tuyệt đối không áp dụng `ON DELETE CASCADE` lên chứng từ tài chính.
 
 ---
 
@@ -150,16 +146,13 @@ Khi cư dân nộp số tiền `amount` nhỏ hơn tổng số còn nợ `debt_a
 
 ---
 
-### 3.5. Hộ chịu phí, thời điểm tính phí và quyền xem lịch sử
+### 3.5. Hộ chịu phí, thời điểm tính phí và quyền xem lịch sử *(Đã chốt DEC-01/02/03/07 ngày 28/11/2026)*
 
-**Đề xuất phạm vi v1.0:** tính trọn tháng theo hộ đang cư trú tại `YYYY-MM-01`, không chia theo số ngày. Hộ vào giữa tháng bắt đầu đóng từ đầu tháng kế tiếp; hộ ở đầu tháng rồi rời giữa tháng vẫn chịu kỳ đó. Tạm trú/tạm vắng không tự miễn phí khi hộ vẫn còn hiệu lực. Căn không có hộ tại đầu kỳ được bỏ qua cả hai khoản phí theo giả định đồ án; đây là quy ước cần khách hàng/nhóm xác nhận, không phải kết luận về nghĩa vụ thực tế.
+**Phạm vi v1.0 đã chốt:** tính trọn tháng cho **kỳ hiện tại hoặc tương lai** theo hộ hiện hữu, diện tích hiện tại (`apartments.area`) và đơn giá hiệu lực tại đầu kỳ, rồi chụp snapshot bất biến lên hóa đơn. Không chia theo số ngày; căn trống bỏ qua cả hai khoản phí; tạm trú/tạm vắng không tự miễn phí khi hộ vẫn còn cư trú.
 
-- Sinh bù kỳ cũ dùng khoảng cư trú, phiên bản diện tích và đơn giá tại đầu kỳ, không dùng dữ liệu hiện tại. Thiếu lịch sử thì trả `422` và liệt kê dữ liệu thiếu; không âm thầm dùng giá/diện tích mới.
-- Mốc đầu kỳ quyết định hộ chịu phí, diện tích và đơn giá. Tên đại diện và mã phòng được snapshot tại lần phát hành từ đúng hộ đã chọn, không tự nhận là lịch sử tên đại diện tại đầu kỳ nếu chưa lưu lịch sử đó. Chứng từ đã phát hành vẫn giữ nguyên snapshot khi thông tin hiện tại đổi.
-- Đổi người đại diện trong cùng gia đình giữ `household_id`; thay toàn bộ hộ thì đóng hộ A và tạo hộ B có ID mới. Kỳ cũ/nợ cũ giữ ở A, không tự chuyển nghĩa vụ sang B. BQT được xem cả lịch sử căn, cư dân B chỉ xem dữ liệu của B.
-- Công nợ nội bộ chia thành **nợ hộ hiện tại**, **nợ hộ cũ** và tổng của căn; không đưa nợ hộ cũ vào số phải đóng của cư dân mới. BQT có thể ghi nhận người đại diện hộ cũ thanh toán bằng cách chọn rõ hộ cũ trong panel.
-- Quyền cư dân: suy ra nhân khẩu/hộ từ tài khoản; chỉ trả hóa đơn cùng hộ và kỳ không sớm hơn tháng `joined_household_on`. Kiểm tra lại quyền cho mọi API biên lai/đóng góp, không tin `apartmentId` phía client. Ví dụ gia nhập 15/12 thì không xem chứng từ tháng 11 của cùng hộ.
-- Chuyển giao hộ trong v1.0 thực hiện có hiệu lực hôm nay, có xác nhận và audit; không tự động chuyển giao từ thao tác sửa quan hệ. Cấm đổi lùi ngày ảnh hưởng hóa đơn đã phát hành; xử lý sai sót theo mục 3.6.
+- **Bỏ sinh bù kỳ quá khứ (DEC-02):** Chặn phát hành mới cho kỳ nhỏ hơn tháng hiện tại theo giờ Việt Nam (`400`/`422`); thiếu đơn giá hiệu lực tại đầu kỳ trả `422`. Không cần bảng `apartment_area_versions`; đổi diện tích hay đổi đơn giá sau khi phát hành không làm đổi snapshot hóa đơn cũ.
+- **Bỏ chuyển giao hộ A → B tách lịch sử & nợ trong v1.0 (DEC-03):** Giữ mô hình 1 hộ/căn của Sprint 1 (`UNIQUE(apartment_id)`), chỉ hỗ trợ đổi người đại diện trong cùng hộ. Chứng từ đã phát hành vẫn giữ nguyên `payer_name_snapshot` và `room_number_snapshot` khi thông tin hiện tại đổi.
+- **Quyền cư dân (DEC-07):** Suy ra nhân khẩu/hộ trực tiếp từ tài khoản trong DB (`req.user.id -> users.resident_id`), kiểm tra trạng thái hiệu lực theo ngày Việt Nam (`resolveEffectiveResidencyStatus` / `getEffectiveResidencyStatuses`). Cư dân đã `"Chuyển đi"` bị chặn `403` trên mọi API đọc hóa đơn/biên lai/đóng góp; không tin `apartmentId`/`householdId` phía client.
 
 ### 3.6. Hóa đơn phát hành sai và bảo toàn dữ liệu Sprint 1
 
@@ -284,11 +277,10 @@ Bảng `users.role` được mở rộng thành `ENUM('ADMIN', 'BQT', 'ACCOUNTAN
 | 14 | `GET /api/reports/collections/export` | `US-014` | `ADMIN`, `BQT`, `ACCOUNTANT`, `TREASURER` | Xuất Excel `.xlsx` tổng thu theo từng loại phí (từ `service_paid_amount`, `management_paid_amount`) và từng quỹ, hỗ trợ lọc theo kỳ hóa đơn hoặc tháng thực thu. |
 | 15 | `GET /api/me/bills` & `GET /api/me/bills/:billId/receipts` | `US-009`, `010`, `012`, `013` | `RESIDENT` | Cư dân đang cư trú xem chứng từ được phép của hộ mình; suy nhân khẩu/hộ từ DB theo user đã xác thực, kiểm hiệu lực/ngày gia nhập và từng ID chứng từ, chống IDOR. |
 | 16 | `PATCH /api/accounts/:id/role` & `GET /api/audit-logs` | `US-018`, `US-019` | `ADMIN` | Đổi vai trò tài khoản (chặn hạ quyền `ADMIN` cuối cùng, tăng `token_version`) và tra cứu Nhật ký kiểm toán hệ thống. |
-| 17 | `POST /api/apartments/:id/household-transfers` | `US-002`, `US-004`, `US-019` | `ADMIN`, `BQT` | Đóng hộ cũ/mở hộ mới có hiệu lực hôm nay, xác nhận chủ hộ mới, giữ nợ cũ và thu hồi quyền hộ cũ trong transaction. |
-| 18 | `POST /api/bills/:billId/cancel` & `POST /api/bills/:billId/replace` | `US-008`, `US-019` | `ADMIN`, `ACCOUNTANT` | Bắt buộc lý do; chặn nếu còn khoản thu VALID; hủy lưu lịch sử hoặc thay thế bằng revision mới atomic. |
-| 19 | `GET /api/billing-periods/:period/notices?billIds=...` | `US-009` | Nhân sự nội bộ | Dữ liệu in nhiều giấy báo cùng kỳ, tối đa 100 bản, kiểm tra từng ID và giữ snapshot. |
-| 20 | `PATCH /api/campaigns/:id/status` | `US-007` | `ADMIN`, `BQT`, `ACCOUNTANT` | Chuyển OPEN → CLOSED có audit; đóng lại không tạo đợt mới, không mở lại trong v1.0. |
-| 21 | `POST /api/contributions/:id/void` & `GET /api/contributions/:id/receipt` | `US-011`, `US-019` | Hủy: `ADMIN`, `BQT`, `TREASURER`; đọc: nhân sự nội bộ | Hủy có lý do, lưu vết và tính lại tổng quỹ; biên nhận hủy có nhãn ĐÃ HỦY. |
-| 22 | `GET /api/me/contributions` & `GET /api/me/contributions/:id/receipt` | `US-011`, `US-013` | `RESIDENT` | Chỉ dữ liệu của hộ được phép xem theo mục 3.5; kiểm tra cả quyền với chứng từ cụ thể. |
+| 17 | `POST /api/bills/:billId/cancel` & `POST /api/bills/:billId/replace` | `US-008`, `US-019` | `ADMIN`, `ACCOUNTANT` | Bắt buộc lý do; chặn nếu còn khoản thu VALID; hủy lưu lịch sử hoặc thay thế bằng revision mới atomic *(giữ theo DEC-05)*. |
+| 18 | `GET /api/billing-periods/:period/notices?billIds=...` | `US-009` | Nhân sự nội bộ | Dữ liệu in nhiều giấy báo cùng kỳ, tối đa 100 bản, kiểm tra từng ID và giữ snapshot. |
+| 19 | `PATCH /api/campaigns/:id/status` | `US-007` | `ADMIN`, `BQT`, `ACCOUNTANT` | Chuyển OPEN → CLOSED có audit; đóng lại không tạo đợt mới, không mở lại trong v1.0. |
+| 20 | `POST /api/contributions/:id/void` & `GET /api/contributions/:id/receipt` | `US-011`, `US-019` | Hủy: `ADMIN`, `BQT`, `TREASURER`; đọc: nhân sự nội bộ | Hủy có lý do, lưu vết và tính lại tổng quỹ; biên nhận hủy có nhãn ĐÃ HỦY. |
+| 21 | `GET /api/me/contributions` & `GET /api/me/contributions/:id/receipt` | `US-011`, `US-013` | `RESIDENT` | Chỉ dữ liệu của hộ mình theo mục 3.5; kiểm tra cả quyền với chứng từ cụ thể. |
 
 Danh sách trên nhóm một số endpoint liên quan trong cùng dòng, không dùng số dòng làm số lượng endpoint thực tế. Các bổ sung vẫn thuộc các US hiện có; nhóm phải ước lượng lại công sức trước khi cam kết lịch.

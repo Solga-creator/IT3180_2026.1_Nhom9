@@ -45,13 +45,15 @@ Ngoài v1.0: xe/điện nước/Internet (`US-020`, `US-021`), cổng thanh toá
 | Lọc căn hộ bằng chuỗi số phòng | Danh sách và xuất Excel đã truyền ID căn hộ; test có mã `101`/`1101` |
 | Sự kiện cư trú tương lai/hết hạn và Excel lệch trạng thái | Danh sách và xuất dùng cùng resolver theo ngày hiệu lực; test thời điểm và dùng thử căn 101 |
 | Ngày mặc định lấy UTC, lệch ngày Việt Nam | Thêm helper dùng chung `shared/businessDate.mjs`; form và backend theo Việt Nam; dùng thử hiện 28/11 |
-| Quan hệ mặc định khi đổi căn trong form vẫn có thể sai nếu danh sách đang lọc | Người dùng đã quyết định không cần sửa; giữ giới hạn, backend vẫn chặn chủ hộ trùng |
+| Quan hệ mặc định khi đổi căn và form thêm nhân khẩu | Đã tách kiểm tra chủ hộ khỏi bảng đang lọc, khóa input khi đang lưu và bảo vệ draft; giữ hành vi này khi áp giao diện S2. Backend vẫn chặn chủ hộ trùng; chưa xác minh thao tác trên trình duyệt thật. |
 | Bảng chật, ngày khó đọc, phải mở menu cho thao tác thường dùng | Đã cải thiện trong UI hiện tại; bản thiết kế mới tiếp tục tối ưu. Không đồng nghĩa toàn bộ 9 SVG đã được triển khai |
 | Tải lịch sử cùng danh sách, cần phân trang khi lớn | Cần đánh giá khi triển khai S2; không khẳng định đã có tải lười chỉ vì UI đã thu gọn |
 
-**Bằng chứng kiểm thử gần nhất trong phiên sửa:** 25 test backend liên quan và 1 test frontend API đạt; lint đạt. Hai ca hồi quy mới đã thất bại trên code cũ rồi đạt sau sửa. Build thành công khi xuất vào thư mục tạm; build vào `frontend/dist/assets` hiện có gặp lỗi quyền truy cập, chưa xử lý quyền/thư mục đó.
-
-Báo cáo S1 đang có bảng **58/58** từ baseline trước đó; không dùng con số này như bằng chứng đã chạy toàn bộ lại sau hai ca mới và các sửa gần nhất. T00 của kế hoạch S2 phải cập nhật số test thực tế. Lần thử web không sửa hồ sơ cư dân hay chạy seed/migration trên database dùng chung.
+**Bằng chứng kiểm thử gần nhất (28/11/2026, nền commit `b065008` + working tree local sau đợt sửa rà soát cuối Sprint 1):**
+- Đã sửa lọc `GET /api/residents?status=...` theo trạng thái hiệu lực ngày VN (`BUG-S1-06`), đồng nhất điều kiện ứng viên/đăng ký/cấp/duyệt/đăng nhập/xem hộ & thu hồi `token_version` khi ghi bù `"Chuyển đi"` (`BUG-S1-07`), khóa dòng `FOR UPDATE` trong transaction khi xóa căn hộ trống (`BUG-S1-08`), và đồng bộ vòng đời bộ lọc/reload/modal/khóa form thêm cư dân trên `ResidentsPage.jsx` + `ResidentForms.jsx` (`BUG-S1-09`).
+- Toàn bộ suite tự động: **70/70 PASS** (`0 fail`, `0 skip`: `56` backend `npm test` + `8` backend `npm run test:e2e` + `6` frontend `node --test tests/*.test.mjs` gồm file untracked `residentsRefresh.test.mjs`). `npm run lint` (`oxlint`): **0 warnings, 0 errors**.
+- `npm run build` mặc định vẫn gặp lỗi quyền `EPERM` tại `frontend/dist/assets`; `npm run build -- --outDir node_modules/.cache/s1-final-review-verify` **PASS** (37 modules, 118ms).
+- **Chưa xác minh trong lần chạy này:** kiểm thử trực tiếp trên MySQL thật (bao gồm lịch khóa 2 connection thật) và kiểm tra thủ công giao diện trên trình duyệt (desktop / `390px`). Toàn bộ điều kiện còn lại của T00 (DB thử riêng, chốt baseline commit, chốt quy ước `DEC-01`..`DEC-11` và ước lượng lại Sprint 2) vẫn đang mở.
 
 ## 4. Những quyết định đã bổ sung cho Sprint 2
 

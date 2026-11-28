@@ -101,27 +101,27 @@ Nguồn quy tắc chi tiết: [Thiết kế Sprint 2, mục 3.5–3.11](./sprint
 
 | US / phần liên quan | Tiêu chí chấp nhận bổ sung | Kiểm chứng |
 |---|---|---|
-| `US-001`, `002`, `004` (mở rộng nền S1) | Đóng hộ cũ/mở hộ mới giữ lịch sử và nợ; hộ mới không nhận nợ/xem chứng từ hộ cũ; diện tích có ngày hiệu lực; chặn xóa dữ liệu có chứng từ | `FTC-S2-27`, `30`, `33`, `42` |
-| `US-006` | Chọn giá theo đầu kỳ; sửa giá không đổi hóa đơn cũ; audit ghi cùng transaction | `FTC-S2-01`–`03`, `23`, `30` |
+| `US-001`, `002`, `004` (mở rộng nền S1) | Bảo toàn dữ liệu tài chính: chặn xóa căn/hộ/nhân khẩu/tài khoản đã có chứng từ (`ON DELETE RESTRICT`); giữ mô hình 1 hộ/căn của S1 *(bỏ chuyển giao hộ A → B và lịch sử diện tích quá khứ trong v1.0 theo DEC-02/03)* | `FTC-S2-33`, `42` |
+| `US-006` | Chọn giá hiệu lực tại đầu kỳ; sửa giá không đổi hóa đơn cũ; audit ghi cùng transaction | `FTC-S2-01`–`03`, `23` |
 | `US-007` | Tạo/đóng đợt có quyền riêng; đóng rồi không nhận thu mới; cư dân không thấy chi tiết tiền hộ khác | `FTC-S2-40`, `41`, `42` |
-| `US-008` | Tính trọn tháng theo hộ/diện tích/giá tại đầu kỳ; thiếu lịch sử trả 422; preview thay đổi trả 409; phát hành atomic; hủy/thay hóa đơn giữ revision và chặn khi còn khoản thu hợp lệ | `FTC-S2-28`–`32`, `38`, `39` |
+| `US-008` | Chỉ phát hành kỳ hiện tại/tương lai theo hộ hiện hữu, `apartments.area` và giá hiệu lực (chốt snapshot bất biến); preview thay đổi trả 409; phát hành atomic; **giữ hủy/thay hóa đơn sai với revision** và chặn khi còn khoản thu hợp lệ | `FTC-S2-28`, `29`, `31`, `32`, `38`, `39` |
 | `US-009` | In lại không đổi dữ liệu, in nhiều giấy báo một lượt, bản hủy có dấu; A4/A5 không mất số phòng/dấu tiếng Việt | `FTC-S2-35`, `45` |
 | `US-010` | Thu liên tiếp nhiều kỳ trong cùng panel nhưng mỗi xác nhận vẫn một hóa đơn; cùng key cùng payload trả giao dịch cũ, khác payload trả 409; rớt phản hồi sau commit không thu lần hai | `FTC-S2-34`–`37` |
 | `US-011` | Đóng góp có biên nhận, idempotency và hủy có lý do; tổng quỹ khớp giao dịch hợp lệ; không trừ công nợ bắt buộc | `FTC-S2-36`, `40`, `41` |
-| `US-012` | Phân biệt nợ hộ hiện tại/nợ hộ cũ; số tổng và danh sách dùng cùng bộ lọc; không cộng hóa đơn hủy | `FTC-S2-27`, `34`, `44` |
-| `US-013` | Nhân sự xem lịch sử của căn; cư dân chỉ xem phần cùng hộ và từ tháng gia nhập; chứng từ hủy vẫn có trong lịch sử | `FTC-S2-14`, `42`, `45` |
+| `US-012` | Tổng công nợ gồm nợ kỳ hiện tại và nợ lũy kế kỳ trước; số tổng và danh sách dùng cùng bộ lọc; không cộng hóa đơn hủy | `FTC-S2-34`, `44` |
+| `US-013` | Nhân sự xem lịch sử của căn; cư dân chỉ xem phần của hộ mình (chống IDOR, chặn khi đã chuyển đi); chứng từ hủy vẫn có trong lịch sử | `FTC-S2-14`, `42`, `45` |
 | `US-014` | Báo cáo theo kỳ/tháng thực thu Việt Nam khớp bảng và thẻ tổng; cùng quy tắc làm tròn; ghi thời điểm xuất và loại bản hủy khỏi tổng hợp | `FTC-S2-24`, `43`, `44` |
 | `US-018`, `019` | Middleware quyền và audit tài chính là điều kiện bắt buộc của từng API ghi tiền ngay từ đầu; phân quyền quỹ tách tạo đợt/ghi tiền. Nhãn Should trong backlog gốc không cho phép bỏ các kiểm soát này khi triển khai thu phí | `FTC-S2-16`–`19`, `26`, `41` |
 | Phi chức năng / Done toàn sản phẩm | E2E trên DB thật, hồi quy S1, backup/restore riêng, đo p95 trên dữ liệu quy định, in và giao diện hẹp có bằng chứng | `E2E-S2-01`, `OPS-S2-01`, `PERF-S2-01`, `UX-S2-01` |
 
 **Thứ tự công việc đã cập nhật:**
-1. Nền dữ liệu lịch sử hộ/diện tích, bảo toàn FK và hồi quy chức năng xóa S1; quyền và hàm audit trong transaction.
+1. Nền 6 bảng tài chính/audit, bảo toàn FK (`ON DELETE RESTRICT`) và hồi quy chức năng xóa S1; quyền và hàm audit trong transaction.
 2. Đơn giá → preview/phát hành/hủy-thay hóa đơn → giấy báo.
-3. Thu tiền/hủy thu/idempotency → công nợ theo hộ/kỳ → quyền tra cứu cư dân.
+3. Thu tiền/hủy thu/idempotency → công nợ theo kỳ → quyền tra cứu cư dân.
 4. Quỹ tự nguyện → lịch sử/báo cáo → in theo lô và hoàn thiện UX.
 5. E2E DB thật, kiểm thử đồng thời, backup/restore và hiệu năng; ghi kết quả trước khi đánh dấu Done.
 
-**Giới hạn đề xuất v1.0:** Không chia phí theo ngày; hộ vào giữa tháng bắt đầu từ kỳ sau; không tự chuyển nợ hộ cũ sang hộ mới; không thu gộp nhiều hóa đơn trong một giao dịch; không làm cổng thanh toán, hoàn tiền tự động hoặc khóa sổ kế toán. Nhóm xác nhận các giới hạn này với bài toán trước khi code; nếu thay đổi phải cập nhật cả thiết kế và test.
+**Giới hạn đã chốt cho v1.0 (28/11/2026 — DEC-01/02/03/05):** Chỉ phát hành bảng thu cho kỳ hiện tại hoặc tương lai (**bỏ sinh bù kỳ cũ** và bảng lịch sử diện tích `apartment_area_versions`); không chia phí theo ngày; căn trống bỏ qua; **bỏ chuyển giao hộ A → B tách lịch sử & nợ** (giữ 1 hộ/căn của S1, chỉ đổi đại diện trong cùng hộ); **giữ hủy & phát hành thay thế hóa đơn sai** (`cancel/replace` + `revision`); không thu gộp nhiều hóa đơn trong một giao dịch; không làm cổng thanh toán, hoàn tiền tự động hoặc khóa sổ kế toán.
 
 ## 4. Kiến trúc Phân tầng Client–Server & Design Patterns (Mục 10)
 

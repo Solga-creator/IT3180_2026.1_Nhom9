@@ -48,10 +48,10 @@ Các quy ước v1.0 dùng cho dữ liệu mong đợi nằm tại mục 3.5–3
 
 | Mã TC | US / loại | Tình huống và dữ liệu | Kết quả mong đợi | Trạng thái |
 |---|---|---|---|---|
-| `FTC-S2-27` | `US-002`, `004`, `012` | Hộ A phòng 101 còn nợ 500.000; chuyển giao hôm nay cho B | ID hộ khác nhau; nợ/chứng từ giữ ở A; B không nhận nợ A; audit và thu hồi quyền A | Planned |
-| `FTC-S2-28` | `US-008` | Hộ vào 15/11; hộ khác ở 01/11 rồi ra 20/11 | Hộ vào giữa tháng bắt đầu tháng 12; hộ ở đầu tháng chịu trọn tháng 11 theo quy ước v1.0 | Planned |
-| `FTC-S2-29` | `US-004`, `008` | Hộ còn hiệu lực nhưng thành viên tạm vắng; căn khác không có hộ đầu kỳ | Không miễn phí chỉ vì tạm vắng; căn thực sự trống đầu kỳ được bỏ qua | Planned |
-| `FTC-S2-30` | `US-001`, `006`, `008` | Sinh tháng 11 sau khi diện tích/giá đã đổi tháng 12; rồi thử kỳ trước mốc lịch sử | Dùng phiên bản đầu tháng 11; thiếu lịch sử trả 422, không dùng giá trị hiện tại | Planned |
+| `FTC-S2-27` | `US-002`, `004`, `012` | Chuyển giao hộ A → B tách lịch sử & nợ | *Ngoài phạm vi v1.0 theo DEC-03 (28/11/2026)* | Out of Scope (v1.0) |
+| `FTC-S2-28` | `US-008` | Chặn phát hành mới cho kỳ quá khứ theo giờ VN (`period < tháng hiện tại`) | Trả `400`/`422`, không tạo hóa đơn bù kỳ cũ *(theo DEC-02)* | Planned |
+| `FTC-S2-29` | `US-004`, `008` | Hộ có thành viên tạm vắng; căn khác trống (không có hộ) | Không miễn phí chỉ vì tạm vắng; căn trống được bỏ qua | Planned |
+| `FTC-S2-30` | `US-001`, `006`, `008` | Sinh bù kỳ cũ bằng bảng lịch sử diện tích quá khứ | *Ngoài phạm vi v1.0 theo DEC-02 (28/11/2026); tính bất biến kỳ đã phát hành kiểm ở `FTC-S2-23`* | Out of Scope (v1.0) |
 | `FTC-S2-31` | `US-008` | Hủy/thay hóa đơn sai chưa thu | Giữ bản CANCELLED, tạo revision mới liên kết bản cũ; chỉ một bản ISSUED; tổng nợ không cộng đôi | Planned |
 | `FTC-S2-32` | `US-008`, `010` | Thay hóa đơn đang còn khoản thu VALID | 409, không hủy ngầm khoản thu; xử lý thu nhầm có lý do trước | Planned |
 | `FTC-S2-33` | `US-001`, `002` | Xóa căn/hộ/tài khoản đã có chứng từ | Chặn xóa hoặc vô hiệu hóa/lưu trữ theo loại dữ liệu; chứng từ và người thu không mất | Planned |

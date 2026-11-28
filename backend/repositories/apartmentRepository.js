@@ -82,4 +82,50 @@ export async function deleteApartmentById(id) {
   );
 }
 
+export async function deleteEmptyApartmentById(id) {
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    const [rows] = await connection.query(
+      `SELECT id, room_number, area, created_at, updated_at
+       FROM apartments
+       WHERE id = ?
+       FOR UPDATE`,
+      [id],
+    );
+    if (!rows[0]) {
+      await connection.rollback();
+      return { reason: "NOT_FOUND" };
+    }
+
+    const [countRows] = await connection.query(
+      `SELECT COUNT(*) AS n
+       FROM residents r
+       JOIN households h ON h.id = r.household_id
+       WHERE h.apartment_id = ?`,
+      [id],
+    );
+    const residentCount = Number(countRows[0]?.n || 0);
+    if (residentCount > 0) {
+      await connection.rollback();
+      return { reason: "HAS_RESIDENTS" };
+    }
+
+    await connection.query(
+      `DELETE FROM apartments
+       WHERE id = ?`,
+      [id],
+    );
+
+    await connection.commit();
+    return { apartment: toApartment(rows[0]) };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
 

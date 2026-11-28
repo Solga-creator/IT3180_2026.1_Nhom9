@@ -172,30 +172,79 @@ test("US-001 Service: editApartment cập nhật diện tích/số phòng và ch
   assert.equal(updated.area, 64.5);
 });
 
-test("US-001 Service: removeApartment xóa căn hộ trống và chặn xóa căn hộ đang có nhân khẩu", async (t) => {
+test("US-001 Service: removeApartment khóa dòng FOR UPDATE, đếm nhân khẩu và xóa căn hộ trống trong cùng transaction", async (t) => {
   let residentCount = 2;
-  let deleted = false;
-  t.mock.method(pool, "query", async (sql, params) => {
-    if (sql.includes("WHERE id = ?") && sql.includes("SELECT")) {
-      if (params[0] === 99) return [[], []];
-      return [[{ id: 1, room_number: "050", area: "60.00" }], []];
-    }
-    if (sql.includes("COUNT(*) AS n")) {
-      return [[{ n: residentCount }], []];
-    }
-    if (sql.includes("DELETE FROM apartments")) {
-      deleted = true;
-      return [{ affectedRows: 1 }, []];
-    }
-    return [[], []];
+  let failDelete = false;
+  const steps = [];
+  let committed = 0;
+  let rolledBack = 0;
+  let released = 0;
+
+  t.mock.method(pool, "query", async () => {
+    assert.fail("removeApartment must use transaction connection, not pool.query");
   });
 
-  await assert.rejects(removeApartment("abc"), { statusCode: 400 });
-  await assert.rejects(removeApartment(99), { statusCode: 404 });
-  await assert.rejects(removeApartment(1), { statusCode: 400 });
+  t.mock.method(pool, "getConnection", async () => ({
+    beginTransaction: async () => {
+      steps.push("BEGIN");
+    },
+    commit: async () => {
+      steps.push("COMMIT");
+      committed += 1;
+    },
+    rollback: async () => {
+      steps.push("ROLLBACK");
+      rolledBack += 1;
+    },
+    release: () => {
+      steps.push("RELEASE");
+      released += 1;
+    },
+    query: async (sql, params) => {
+      if (/FROM apartments[\s\S]*WHERE id = \?[\s\S]*FOR UPDATE/i.test(sql)) {
+        steps.push(`LOCK:${params[0]}`);
+        if (params[0] === 99) return [[], []];
+        return [[{ id: 1, room_number: "050", area: "60.00" }], []];
+      }
+      if (/COUNT\(\*\) AS n/i.test(sql)) {
+        steps.push(`COUNT:${params[0]}`);
+        return [[{ n: residentCount }], []];
+      }
+      if (/DELETE FROM apartments/i.test(sql)) {
+        steps.push(`DELETE:${params[0]}`);
+        if (failDelete) throw new Error("DB delete failure");
+        return [{ affectedRows: 1 }, []];
+      }
+      return [[], []];
+    },
+  }));
 
+  await assert.rejects(removeApartment("abc"), { statusCode: 400 });
+  assert.equal(steps.length, 0);
+
+  // 1. Not found -> locks, rolls back, releases without counting or deleting
+  await assert.rejects(removeApartment(99), { statusCode: 404 });
+  assert.deepEqual(steps, ["BEGIN", "LOCK:99", "ROLLBACK", "RELEASE"]);
+
+  // 2. Has residents -> locks, counts, rolls back, releases without deleting
+  steps.length = 0;
+  await assert.rejects(removeApartment(1), { statusCode: 400 });
+  assert.deepEqual(steps, ["BEGIN", "LOCK:1", "COUNT:1", "ROLLBACK", "RELEASE"]);
+
+  // 3. Error during delete -> rolls back and releases
+  steps.length = 0;
   residentCount = 0;
+  failDelete = true;
+  await assert.rejects(removeApartment(1), /DB delete failure/);
+  assert.deepEqual(steps, ["BEGIN", "LOCK:1", "COUNT:1", "DELETE:1", "ROLLBACK", "RELEASE"]);
+  assert.equal(rolledBack, 3);
+
+  // 4. Empty apartment -> locks, counts, deletes, commits, releases
+  steps.length = 0;
+  failDelete = false;
   const room = await removeApartment(1);
   assert.equal(room, "050");
-  assert.equal(deleted, true);
+  assert.deepEqual(steps, ["BEGIN", "LOCK:1", "COUNT:1", "DELETE:1", "COMMIT", "RELEASE"]);
+  assert.equal(committed, 1);
+  assert.equal(released, 4);
 });

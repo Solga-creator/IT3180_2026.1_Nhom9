@@ -35,6 +35,21 @@ function formatRangeVN(startDate, endDate) {
     : `Từ ${formatDateVN(startDate)}`;
 }
 
+function buildResidentsQuery({
+  search = "",
+  apartmentId = "",
+  status = "",
+  includeHistory = true,
+} = {}) {
+  const query = new URLSearchParams();
+  const trimmedSearch = String(search || "").trim();
+  if (trimmedSearch) query.set("search", trimmedSearch);
+  if (apartmentId) query.set("apartmentId", String(apartmentId));
+  if (status && RESIDENCY_STATUSES.includes(status)) query.set("status", status);
+  if (includeHistory === false) query.set("includeHistory", "false");
+  return query.size ? `?${query.toString()}` : "";
+}
+
 export default function ResidentsPage() {
   const today = getBusinessDate();
   const navigate = useNavigate();
@@ -42,123 +57,240 @@ export default function ResidentsPage() {
   const activeSearch = searchParams.get("search") || "";
   const activeApartmentId = searchParams.get("apartmentId") || "";
   const activeRoomLabel = searchParams.get("room") || "";
+  const rawStatus = searchParams.get("status") || "";
+  const activeStatus = RESIDENCY_STATUSES.includes(rawStatus) ? rawStatus : "";
 
   const nameInputRef = useRef(null);
+  const apartmentsSeqRef = useRef(0);
+  const listRequestSeqRef = useRef(0);
+  const headCheckSeqRef = useRef(0);
+  const addDraftSeqRef = useRef(0);
+  const filterKey = `${activeSearch}\u0000${activeApartmentId}\u0000${activeStatus}`;
+  const [listRefresh, setListRefresh] = useState(0);
+  const loadKey = `${filterKey}\u0000${listRefresh}`;
   const [apartments, setApartments] = useState([]);
-  const [residents, setResidents] = useState([]);
+  const [listState, setListState] = useState({
+    filterKey: "",
+    loadedKey: "",
+    residents: [],
+  });
+  const residents =
+    listState.filterKey === filterKey ? listState.residents : [];
+  const loading = listState.loadedKey !== loadKey;
   const [showAddForm, setShowAddForm] = useState(false);
   const [apartmentId, setApartmentId] = useState(activeApartmentId);
+  const [headCheck, setHeadCheck] = useState({
+    apartmentId: "",
+    status: "idle",
+    hasHead: null,
+    error: "",
+  });
   const [fullName, setFullName] = useState("");
   const [birthDate, setBirthDate] = useState("");
   const [cccd, setCccd] = useState("");
   const [relationship, setRelationship] = useState("Chủ hộ");
-  const [searchInput, setSearchInput] = useState(activeSearch);
-  const [selectedResidentId, setSelectedResidentId] = useState(null);
+  const [searchDraft, setSearchDraft] = useState({
+    syncedSearch: activeSearch,
+    value: activeSearch,
+  });
+  const searchInput =
+    searchDraft.syncedSearch === activeSearch ? searchDraft.value : activeSearch;
+  const [actionFilterKey, setActionFilterKey] = useState(filterKey);
+  const isCurrentActionScope = actionFilterKey === filterKey;
+  const [rawSelectedResidentId, setSelectedResidentId] = useState(null);
+  const selectedResidentId = isCurrentActionScope ? rawSelectedResidentId : null;
   const [residencyStatus, setResidencyStatus] = useState("Thường trú");
   const [startDate, setStartDate] = useState(getBusinessDate);
   const [endDate, setEndDate] = useState("");
-  const [editingResidentId, setEditingResidentId] = useState(null);
+  const [rawEditingResidentId, setEditingResidentId] = useState(null);
+  const editingResidentId = isCurrentActionScope ? rawEditingResidentId : null;
   const [editFullName, setEditFullName] = useState("");
   const [editBirthDate, setEditBirthDate] = useState("");
   const [editCccd, setEditCccd] = useState("");
   const [editRelationship, setEditRelationship] = useState("Con");
-  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
-  const [confirmHeadPayload, setConfirmHeadPayload] = useState(null);
+  const [rawConfirmDeleteId, setConfirmDeleteId] = useState(null);
+  const confirmDeleteId = isCurrentActionScope ? rawConfirmDeleteId : null;
+  const [rawConfirmHeadPayload, setConfirmHeadPayload] = useState(null);
+  const confirmHeadPayload = isCurrentActionScope ? rawConfirmHeadPayload : null;
   const [deletingId, setDeletingId] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [addingResident, setAddingResident] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-  const [exportStatus, setExportStatus] = useState("Thường trú");
+  const [exportDraft, setExportDraft] = useState({
+    syncedStatus: activeStatus,
+    value: activeStatus || "Thường trú",
+  });
+  const exportStatus =
+    exportDraft.syncedStatus === activeStatus
+      ? exportDraft.value
+      : activeStatus || exportDraft.value;
   const [exporting, setExporting] = useState(false);
 
-  function apartmentHasHead(targetAptId, list = residents) {
-    const numId = Number(targetAptId);
-    if (!numId) return false;
-    return list.some(
-      (r) =>
-        Number(r.apartmentId) === numId &&
-        (r.relationship === "Chủ hộ" || Boolean(r.householdHeadId)),
-    );
+  async function inspectApartmentHead(targetAptId) {
+    const normalizedId = String(targetAptId || "");
+    const reqId = ++headCheckSeqRef.current;
+    if (!normalizedId) {
+      setHeadCheck({ apartmentId: "", status: "idle", hasHead: null, error: "" });
+      return;
+    }
+
+    setHeadCheck({
+      apartmentId: normalizedId,
+      status: "loading",
+      hasHead: null,
+      error: "",
+    });
+
+    try {
+      const suffix = buildResidentsQuery({
+        apartmentId: normalizedId,
+        includeHistory: false,
+      });
+      const data = await api(`/api/residents${suffix}`);
+      if (reqId !== headCheckSeqRef.current) return;
+      const aptResidents = data.residents || [];
+      const hasHead = aptResidents.some(
+        (r) => Boolean(r.householdHeadId) || r.relationship === "Chủ hộ",
+      );
+      setHeadCheck({
+        apartmentId: normalizedId,
+        status: "ready",
+        hasHead,
+        error: "",
+      });
+      setRelationship(hasHead ? "Con" : "Chủ hộ");
+    } catch (checkError) {
+      if (reqId !== headCheckSeqRef.current) return;
+      setHeadCheck({
+        apartmentId: normalizedId,
+        status: "error",
+        hasHead: null,
+        error:
+          checkError.message ||
+          "Không thể kiểm tra chủ hộ của căn hộ này. Vui lòng thử lại.",
+      });
+    }
   }
 
-  function handleApartmentSelect(nextAptId, list = residents) {
-    setApartmentId(nextAptId);
-    if (!nextAptId) return;
-    setRelationship(apartmentHasHead(nextAptId, list) ? "Con" : "Chủ hộ");
+  function handleApartmentSelect(nextAptId) {
+    if (addingResident) return;
+    addDraftSeqRef.current += 1;
+    const normalizedId = String(nextAptId || "");
+    setApartmentId(normalizedId);
+    inspectApartmentHead(normalizedId);
   }
 
-  async function fetchResidentsList(searchVal = activeSearch, aptIdVal = activeApartmentId) {
-    const query = new URLSearchParams();
-    if (searchVal.trim()) query.set("search", searchVal.trim());
-    if (aptIdVal) query.set("apartmentId", String(aptIdVal));
-    const suffix = query.size ? `?${query.toString()}` : "";
-    const data = await api(`/api/residents${suffix}`);
-    const nextList = data.residents || [];
-    setResidents(nextList);
-    return nextList;
+  function toggleAddForm() {
+    if (addingResident) return;
+    const nextOpen = !showAddForm;
+    setShowAddForm(nextOpen);
+    if (nextOpen) {
+      const targetApt = activeApartmentId
+        ? String(activeApartmentId)
+        : String(apartmentId || "");
+      if (targetApt) {
+        handleApartmentSelect(targetApt);
+      }
+    } else {
+      addDraftSeqRef.current += 1;
+    }
   }
 
   useEffect(() => {
-    let active = true;
-    const query = new URLSearchParams();
-    if (activeSearch.trim()) query.set("search", activeSearch.trim());
-    if (activeApartmentId) query.set("apartmentId", String(activeApartmentId));
-    const suffix = query.size ? `?${query.toString()}` : "";
+    if (rawStatus && !activeStatus) {
+      const normalized = new URLSearchParams(searchParams);
+      normalized.delete("status");
+      setSearchParams(normalized, { replace: true });
+    }
+  }, [rawStatus, activeStatus, searchParams, setSearchParams]);
 
-    Promise.all([api("/api/apartments"), api(`/api/residents${suffix}`)])
-      .then(([apartmentData, residentData]) => {
-        if (!active) return;
-        const apts = apartmentData.apartments || [];
-        const resList = residentData.residents || [];
-        setApartments(apts);
-        setResidents(resList);
-        if (activeApartmentId) {
-          setApartmentId(String(activeApartmentId));
-          setRelationship(
-            resList.some(
-              (r) =>
-                Number(r.apartmentId) === Number(activeApartmentId) &&
-                (r.relationship === "Chủ hộ" || Boolean(r.householdHeadId)),
-            )
-              ? "Con"
-              : "Chủ hộ",
-          );
-        }
+  useEffect(() => {
+    const reqId = ++apartmentsSeqRef.current;
+    api("/api/apartments")
+      .then((apartmentData) => {
+        if (reqId !== apartmentsSeqRef.current) return;
+        setApartments(apartmentData.apartments || []);
       })
       .catch((loadError) => {
-        if (active) setError(loadError.message);
-      })
-      .finally(() => {
-        if (active) setLoading(false);
+        if (reqId === apartmentsSeqRef.current) {
+          setError((prev) => prev || loadError.message);
+        }
       });
 
     return () => {
-      active = false;
+      apartmentsSeqRef.current += 1;
     };
-  }, [activeSearch, activeApartmentId]);
+  }, []);
+
+  useEffect(() => {
+    const reqId = ++listRequestSeqRef.current;
+    const suffix = buildResidentsQuery({
+      search: activeSearch,
+      apartmentId: activeApartmentId,
+      status: activeStatus,
+    });
+
+    api(`/api/residents${suffix}`)
+      .then((residentData) => {
+        if (reqId !== listRequestSeqRef.current) return;
+        setListState({
+          filterKey,
+          loadedKey: loadKey,
+          residents: residentData.residents || [],
+        });
+      })
+      .catch((loadError) => {
+        if (reqId === listRequestSeqRef.current) {
+          setError(loadError.message);
+          setListState({
+            filterKey,
+            loadedKey: loadKey,
+            residents: [],
+          });
+        }
+      });
+
+    return () => {
+      listRequestSeqRef.current += 1;
+    };
+  }, [activeSearch, activeApartmentId, activeStatus, listRefresh, filterKey, loadKey]);
 
   async function onExport(event) {
     event.preventDefault();
+    const targetExportStatus = RESIDENCY_STATUSES.includes(exportStatus)
+      ? exportStatus
+      : "";
+    if (!targetExportStatus) {
+      setError("Chọn trạng thái cư trú hợp lệ để xuất Excel.");
+      return;
+    }
+
     setError("");
     setMessage("");
     setExporting(true);
     try {
-      const query = new URLSearchParams({ status: exportStatus });
-      const effectiveSearch = activeSearch.trim() || activeRoomLabel.trim();
+      const query = new URLSearchParams({ status: targetExportStatus });
       if (activeSearch.trim()) query.set("search", activeSearch.trim());
       if (activeApartmentId) query.set("apartmentId", activeApartmentId);
       const blob = await api(`/api/residents/export?${query}`, {}, "blob");
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `nhan-khau-${exportStatus}.xlsx`;
+      link.download = `nhan-khau-${targetExportStatus}.xlsx`;
       document.body.appendChild(link);
       link.click();
       link.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
+      const scopeParts = [];
+      if (activeApartmentId) {
+        scopeParts.push(`Phòng ${activeRoomLabel || activeApartmentId}`);
+      }
+      if (activeSearch.trim()) {
+        scopeParts.push(`tìm "${activeSearch.trim()}"`);
+      }
       setMessage(
-        `Đã tải danh sách nhân khẩu (${exportStatus}${effectiveSearch ? ` · lọc: "${effectiveSearch}"` : ""}).`,
+        `Đã tải danh sách nhân khẩu (${targetExportStatus}${scopeParts.length ? ` · ${scopeParts.join(", ")}` : ""}).`,
       );
     } catch (exportError) {
       setError(exportError.message);
@@ -169,15 +301,28 @@ export default function ResidentsPage() {
 
   async function onAddResident(event) {
     event.preventDefault();
+    if (
+      addingResident ||
+      !apartmentId ||
+      headCheck.status !== "ready" ||
+      headCheck.apartmentId !== String(apartmentId)
+    ) {
+      setError("Đang xác định chủ hộ của căn hộ hoặc chưa tải được dữ liệu chủ hộ.");
+      return;
+    }
+
+    const targetAptId = String(apartmentId);
+    const draftSeq = addDraftSeqRef.current;
     setError("");
     setMessage("");
+    setAddingResident(true);
     setBusy(true);
 
     try {
       const data = await api("/api/residents", {
         method: "POST",
         body: JSON.stringify({
-          apartmentId,
+          apartmentId: targetAptId,
           fullName,
           birthDate,
           cccd,
@@ -187,22 +332,33 @@ export default function ResidentsPage() {
       setMessage(
         `Đã thêm ${data.resident.fullName} vào phòng ${data.resident.roomNumber}. Bạn có thể nhập tiếp thành viên khác của phòng này.`,
       );
-      setFullName("");
-      setBirthDate("");
-      setCccd("");
-      setRelationship("Con");
-      await fetchResidentsList();
-      setTimeout(() => {
-        nameInputRef.current?.focus();
-      }, 20);
+      if (addDraftSeqRef.current === draftSeq) {
+        setFullName("");
+        setBirthDate("");
+        setCccd("");
+        setHeadCheck({
+          apartmentId: targetAptId,
+          status: "ready",
+          hasHead: true,
+          error: "",
+        });
+        setRelationship("Con");
+        setTimeout(() => {
+          nameInputRef.current?.focus();
+        }, 20);
+      }
+      // Let the effect reload with the current URL, even if this save began before navigation.
+      setListRefresh((value) => value + 1);
     } catch (submitError) {
       setError(submitError.message);
     } finally {
+      setAddingResident(false);
       setBusy(false);
     }
   }
 
   function startEditResident(resident) {
+    setActionFilterKey(filterKey);
     setConfirmDeleteId(null);
     setConfirmHeadPayload(null);
     setEditingResidentId(resident.id);
@@ -214,6 +370,7 @@ export default function ResidentsPage() {
 
   async function onSaveResidentEdit(resident) {
     if (resident.relationship !== "Chủ hộ" && editRelationship === "Chủ hộ") {
+      setActionFilterKey(filterKey);
       setEditingResidentId(null);
       setConfirmHeadPayload({
         resident,
@@ -239,8 +396,15 @@ export default function ResidentsPage() {
       });
       setMessage(`Đã cập nhật thông tin nhân khẩu ${data.resident.fullName}.`);
       setEditingResidentId(null);
-      setResidents((prev) =>
-        prev.map((item) => (item.id === resident.id ? data.resident : item)),
+      setListState((prev) =>
+        prev.filterKey === filterKey
+          ? {
+              ...prev,
+              residents: prev.residents.map((item) =>
+                item.id === resident.id ? data.resident : item,
+              ),
+            }
+          : prev,
       );
     } catch (editError) {
       setError(editError.message);
@@ -270,7 +434,7 @@ export default function ResidentsPage() {
         `Đã chuyển quyền Chủ hộ phòng ${data.resident.roomNumber} sang ${data.resident.fullName}.`,
       );
       setConfirmHeadPayload(null);
-      await fetchResidentsList();
+      setListRefresh((value) => value + 1);
     } catch (headError) {
       setError(headError.message);
       setConfirmHeadPayload(null);
@@ -287,8 +451,19 @@ export default function ResidentsPage() {
       await api(`/api/residents/${resident.id}`, { method: "DELETE" });
       setMessage(`Đã xóa nhân khẩu ${resident.fullName} (phòng ${resident.roomNumber}).`);
       setConfirmDeleteId(null);
+      if (editingResidentId === resident.id) setEditingResidentId(null);
       if (selectedResidentId === resident.id) closeResidencyModal();
-      setResidents((prev) => prev.filter((item) => item.id !== resident.id));
+      setListState((prev) =>
+        prev.filterKey === filterKey
+          ? {
+              ...prev,
+              residents: prev.residents.filter((item) => item.id !== resident.id),
+            }
+          : prev,
+      );
+      if (showAddForm && apartmentId && Number(apartmentId) === Number(resident.apartmentId)) {
+        inspectApartmentHead(apartmentId);
+      }
     } catch (delError) {
       setError(delError.message);
       setConfirmDeleteId(null);
@@ -302,25 +477,49 @@ export default function ResidentsPage() {
     setError("");
     setMessage("");
     const trimmed = searchInput.trim();
-    if (trimmed !== activeSearch || activeApartmentId) {
-      setLoading(true);
-    }
     const nextParams = new URLSearchParams();
     if (trimmed) {
       nextParams.set("search", trimmed);
     }
+    if (activeStatus) {
+      nextParams.set("status", activeStatus);
+    }
+    setSearchParams(nextParams);
+  }
+
+  function onStatusFilterChange(nextValue) {
+    setError("");
+    setMessage("");
+    const nextStatus = RESIDENCY_STATUSES.includes(nextValue) ? nextValue : "";
+    if (nextStatus) {
+      setExportDraft({ syncedStatus: nextStatus, value: nextStatus });
+    }
+    const nextParams = new URLSearchParams();
+    if (activeSearch) nextParams.set("search", activeSearch);
+    if (activeApartmentId) nextParams.set("apartmentId", activeApartmentId);
+    if (activeRoomLabel) nextParams.set("room", activeRoomLabel);
+    if (nextStatus) nextParams.set("status", nextStatus);
     setSearchParams(nextParams);
   }
 
   function clearAllFilters() {
-    setSearchInput("");
-    if (activeSearch || activeApartmentId) {
-      setLoading(true);
-    }
+    setError("");
+    setMessage("");
+    setSearchDraft({ syncedSearch: "", value: "" });
     setSearchParams({});
   }
 
+  function clearApartmentFilter() {
+    setError("");
+    setMessage("");
+    const nextParams = new URLSearchParams();
+    if (activeSearch) nextParams.set("search", activeSearch);
+    if (activeStatus) nextParams.set("status", activeStatus);
+    setSearchParams(nextParams);
+  }
+
   function openResidencyModal(resident) {
+    setActionFilterKey(filterKey);
     setSelectedResidentId(resident.id);
     setResidencyStatus(resident.currentStatus || "Thường trú");
     setStartDate(getBusinessDate());
@@ -349,11 +548,17 @@ export default function ResidentsPage() {
           endDate,
         }),
       });
-      setMessage(`Đã ghi nhận biến động cư trú cho ${data.resident.fullName}.`);
-      closeResidencyModal();
-      setResidents((prev) =>
-        prev.map((item) => (item.id === data.resident.id ? data.resident : item)),
+      const movedOutOfFilter =
+        activeStatus && data.resident.currentStatus !== activeStatus;
+      setMessage(
+        movedOutOfFilter
+          ? `Đã ghi nhận biến động cư trú cho ${data.resident.fullName} (trạng thái hiệu lực hiện tại: ${data.resident.currentStatus}).`
+          : `Đã ghi nhận biến động cư trú cho ${data.resident.fullName}.`,
       );
+      closeResidencyModal();
+      if (editingResidentId === data.resident.id) setEditingResidentId(null);
+      if (confirmDeleteId === data.resident.id) setConfirmDeleteId(null);
+      setListRefresh((value) => value + 1);
     } catch (statusError) {
       setError(statusError.message);
     } finally {
@@ -374,12 +579,26 @@ export default function ResidentsPage() {
       )?.fullName ||
       "Chưa có chủ hộ"
     : "";
+  const isCheckingSelectedHead =
+    Boolean(apartmentId) &&
+    (headCheck.status === "loading" || headCheck.apartmentId !== String(apartmentId));
+  const hasHeadCheckError =
+    Boolean(apartmentId) &&
+    headCheck.status === "error" &&
+    headCheck.apartmentId === String(apartmentId);
+  const exportScopeParts = [];
+  if (activeApartmentId) {
+    exportScopeParts.push(`Phòng ${activeRoomLabel || activeApartmentId}`);
+  }
+  if (activeSearch) {
+    exportScopeParts.push(`tìm "${activeSearch}"`);
+  }
 
   return (
     <section>
       <h1>Hộ và nhân khẩu</h1>
       <p className="hint">
-        Tra cứu nhanh theo số phòng hoặc họ tên. Bấm{" "}
+        Tra cứu nhanh theo số phòng, họ tên hoặc trạng thái cư trú. Bấm{" "}
         <strong>+ Thêm cư dân</strong> khi cần nhập chủ hộ hoặc thành viên mới.
       </p>
 
@@ -391,14 +610,32 @@ export default function ResidentsPage() {
           Tìm theo số phòng hoặc họ tên
           <input
             value={searchInput}
-            onChange={(event) => setSearchInput(event.target.value)}
+            onChange={(event) =>
+              setSearchDraft({
+                syncedSearch: activeSearch,
+                value: event.target.value,
+              })
+            }
             placeholder="Nhập số phòng (vd: 050) hoặc họ tên cần tìm"
           />
+        </label>
+        <label>
+          Trạng thái cư trú
+          <select
+            value={activeStatus}
+            onChange={(event) => onStatusFilterChange(event.target.value)}
+            disabled={loading}
+          >
+            <option value="">Tất cả trạng thái</option>
+            {RESIDENCY_STATUSES.map((status) => (
+              <option key={status} value={status}>{status}</option>
+            ))}
+          </select>
         </label>
         <button type="submit" disabled={loading}>
           {loading ? "Đang tìm…" : "Tìm"}
         </button>
-        {(activeSearch || activeApartmentId) && (
+        {(activeSearch || activeApartmentId || activeStatus) && (
           <button
             type="button"
             className="link"
@@ -410,15 +647,8 @@ export default function ResidentsPage() {
         )}
         <button
           type="button"
-          onClick={() => {
-            setShowAddForm((prev) => {
-              const nextOpen = !prev;
-              if (nextOpen && activeApartmentId) {
-                handleApartmentSelect(String(activeApartmentId));
-              }
-              return nextOpen;
-            });
-          }}
+          disabled={addingResident}
+          onClick={toggleAddForm}
         >
           {showAddForm ? "Ẩn form thêm" : "+ Thêm cư dân"}
         </button>
@@ -431,7 +661,7 @@ export default function ResidentsPage() {
           <button
             type="button"
             className="link"
-            onClick={clearAllFilters}
+            onClick={clearApartmentFilter}
           >
             Xem tất cả các phòng
           </button>
@@ -440,13 +670,18 @@ export default function ResidentsPage() {
 
       <form className="search-form" onSubmit={onExport}>
         <label>
-          Xuất Excel theo trạng thái cư trú{" "}
-          {activeSearch || activeRoomLabel
-            ? `(đồng bộ bộ lọc "${activeSearch || activeRoomLabel}")`
+          Trạng thái xuất Excel{" "}
+          {exportScopeParts.length > 0
+            ? `(đồng bộ lọc: ${exportScopeParts.join(" · ")})`
             : "(toàn bộ danh sách)"}
           <select
             value={exportStatus}
-            onChange={(event) => setExportStatus(event.target.value)}
+            onChange={(event) =>
+              setExportDraft({
+                syncedStatus: activeStatus,
+                value: event.target.value,
+              })
+            }
             disabled={exporting}
           >
             {RESIDENCY_STATUSES.map((status) => (
@@ -460,25 +695,53 @@ export default function ResidentsPage() {
       </form>
 
       {showAddForm && (
-        <AddResidentForm
-          apartments={apartments}
-          apartmentId={apartmentId}
-          onApartmentChange={(nextId) => handleApartmentSelect(nextId)}
-          fullName={fullName}
-          setFullName={setFullName}
-          nameInputRef={nameInputRef}
-          birthDate={birthDate}
-          setBirthDate={setBirthDate}
-          cccd={cccd}
-          setCccd={setCccd}
-          relationship={relationship}
-          setRelationship={setRelationship}
-          hasHeadForSelectedApartment={apartmentHasHead(apartmentId)}
-          busy={busy}
-          loading={loading}
-          onSubmit={onAddResident}
-          onClose={() => setShowAddForm(false)}
-        />
+        <>
+          {isCheckingSelectedHead && (
+            <p className="muted" role="status">
+              Đang kiểm tra chủ hộ của căn hộ đã chọn…
+            </p>
+          )}
+          {hasHeadCheckError && (
+            <p className="error" role="alert">
+              {headCheck.error}{" "}
+              <button
+                type="button"
+                className="link"
+                onClick={() => inspectApartmentHead(apartmentId)}
+              >
+                Thử lại
+              </button>
+            </p>
+          )}
+          <AddResidentForm
+            apartments={apartments}
+            apartmentId={apartmentId}
+            onApartmentChange={(nextId) => handleApartmentSelect(nextId)}
+            fullName={fullName}
+            setFullName={setFullName}
+            nameInputRef={nameInputRef}
+            birthDate={birthDate}
+            setBirthDate={setBirthDate}
+            cccd={cccd}
+            setCccd={setCccd}
+            relationship={relationship}
+            setRelationship={setRelationship}
+            hasHeadForSelectedApartment={
+              headCheck.status === "ready" &&
+              headCheck.apartmentId === String(apartmentId) &&
+              headCheck.hasHead === true
+            }
+            submitting={addingResident}
+            busy={addingResident || busy || isCheckingSelectedHead || hasHeadCheckError}
+            loading={loading}
+            onSubmit={onAddResident}
+            onClose={() => {
+              if (addingResident) return;
+              addDraftSeqRef.current += 1;
+              setShowAddForm(false);
+            }}
+          />
+        </>
       )}
 
       {pendingHeadResident && (
@@ -535,6 +798,7 @@ export default function ResidentsPage() {
         Danh sách nhân khẩu ({residents.length})
         {activeSearch ? ` · Tìm: "${activeSearch}"` : ""}
         {activeRoomLabel ? ` · Phòng: ${activeRoomLabel}` : ""}
+        {activeStatus ? ` · Trạng thái: ${activeStatus}` : ""}
       </h2>
       {loading ? (
         <p className="muted">Đang tải danh sách…</p>
@@ -699,6 +963,7 @@ export default function ResidentsPage() {
                                 className="link"
                                 disabled={busy}
                                 onClick={() => {
+                                  setActionFilterKey(filterKey);
                                   setConfirmDeleteId(null);
                                   setEditingResidentId(null);
                                   setConfirmHeadPayload({
@@ -729,6 +994,7 @@ export default function ResidentsPage() {
                               type="button"
                               className="danger"
                               onClick={() => {
+                                setActionFilterKey(filterKey);
                                 setConfirmHeadPayload(null);
                                 setEditingResidentId(null);
                                 setConfirmDeleteId(resident.id);

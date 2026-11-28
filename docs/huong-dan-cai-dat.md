@@ -104,7 +104,7 @@ Kiểm tra frontend (đứng trong thư mục `frontend`):
 ```bash
 npm run lint
 npm run build
-node --test tests/api.test.mjs
+node --test tests/*.test.mjs
 ```
 
 Cài xong và chạy được web rồi thì bạn xem tiếp cách thao tác từng màn hình trong [huong-dan-su-dung.md](./huong-dan-su-dung.md).

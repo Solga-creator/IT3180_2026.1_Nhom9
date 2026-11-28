@@ -124,7 +124,7 @@ test("US-002 Service: Tạo chủ hộ Nguyễn Văn A cho căn 050 thành công
 test("US-003 Service: Tìm kiếm nhân khẩu theo số phòng hoặc họ tên kèm lịch sử", async (t) => {
   t.mock.method(pool, "query", async (sql, params) => {
     if (/FROM residents r/i.test(sql)) {
-      assert.match(sql, /WHERE a\.room_number LIKE \? OR r\.full_name LIKE \?/);
+      assert.match(sql, /WHERE \(a\.room_number LIKE \? OR r\.full_name LIKE \?\)/);
       assert.deepEqual(params, ["%050%", "%050%"]);
       return [[{
         id: 100,
@@ -439,4 +439,170 @@ test("US-003 & US-004 Service: Tự động áp dụng sự kiện cư trú khi 
   assert.equal(filtered.length, 1);
   assert.equal(filtered[0].roomNumber, "101");
   assert.equal(filtered[0].householdHeadName, "Lê Văn Chủ Hộ");
+});
+
+test("US-004 Service: Ghi bù Chuyển đi trước start_date của sự kiện đã hết hạn vẫn thu hồi token trong cùng transaction và rollback khi lỗi", async (t) => {
+  // 2026-11-27T18:00:00Z = 2026-11-28 VN
+  t.mock.timers.enable({ apis: ["Date"], now: new Date("2026-11-27T18:00:00Z") });
+
+  let residentRow = {
+    id: 100,
+    household_id: 10,
+    apartment_id: 1,
+    room_number: "050",
+    full_name: "Nguyễn Văn A",
+    birth_date: "1985-05-15",
+    relationship_to_head: "Chủ hộ",
+    current_status: "Tạm vắng",
+    status_start_date: "2026-11-15",
+    status_end_date: "2026-11-20",
+    created_at: new Date("2026-11-05T04:00:00Z"),
+  };
+  let events = [
+    {
+      id: 1,
+      resident_id: 100,
+      status: "Tạm vắng",
+      start_date: "2026-11-15",
+      end_date: "2026-11-20",
+      created_at: new Date("2026-11-15T00:00:00Z"),
+    },
+  ];
+  let tokenRevokeCalls = 0;
+  let failTokenUpdate = false;
+  let committed = 0;
+  let rolledBack = 0;
+  let released = 0;
+
+  t.mock.method(pool, "query", async () => {
+    assert.fail("createResidencyEvent must use transaction connection, not pool.query");
+  });
+
+  t.mock.method(pool, "getConnection", async () => {
+    let txRow = { ...residentRow };
+    let txEvents = [...events];
+    return {
+      beginTransaction: async () => {},
+      commit: async () => {
+        residentRow = txRow;
+        events = txEvents;
+        committed += 1;
+      },
+      rollback: async () => {
+        rolledBack += 1;
+      },
+      release: () => {
+        released += 1;
+      },
+      query: async (sql, params = []) => {
+        if (/FOR UPDATE/i.test(sql) && /FROM residents/i.test(sql)) {
+          return [[{ ...txRow }], []];
+        }
+        if (/INSERT INTO residency_events/i.test(sql)) {
+          const nextId = txEvents.length + 1;
+          txEvents = [
+            ...txEvents,
+            {
+              id: nextId,
+              resident_id: params[0],
+              status: params[1],
+              start_date: params[2],
+              end_date: params[3],
+              created_at: new Date("2026-11-28T00:00:00Z"),
+            },
+          ].sort(
+            (a, b) =>
+              String(b.start_date).localeCompare(String(a.start_date)) ||
+              b.id - a.id,
+          );
+          return [{ insertId: nextId }, []];
+        }
+        if (/UPDATE residents/i.test(sql)) {
+          txRow = {
+            ...txRow,
+            current_status: params[0],
+            status_start_date: params[1],
+            status_end_date: params[2],
+          };
+          return [{ affectedRows: 1 }, []];
+        }
+        if (/UPDATE users[\s\S]*SET token_version/i.test(sql)) {
+          if (failTokenUpdate) {
+            throw new Error("DB error updating token_version");
+          }
+          tokenRevokeCalls += 1;
+          return [{ affectedRows: 1 }, []];
+        }
+        if (/FROM residency_events/i.test(sql)) {
+          return [[...txEvents], []];
+        }
+        if (/FROM residents r/i.test(sql)) {
+          return [[{ ...txRow }], []];
+        }
+        return [[], []];
+      },
+    };
+  });
+
+  // 1. Backdated Chuyển đi (10/11, no endDate) overrides expired Tạm vắng (15-20/11) -> becomes Chuyển đi & revokes token
+  const res1 = await updateResidencyStatus(
+    100,
+    { status: "Chuyển đi", startDate: "2026-11-10", endDate: "" },
+    2,
+  );
+  assert.equal(res1.currentStatus, "Chuyển đi");
+  assert.equal(tokenRevokeCalls, 1);
+  assert.equal(committed, 1);
+
+  // 2. Superseded Chuyển đi (when a newer Chuyển đến 25/11 is active) must NOT revoke token
+  residentRow = {
+    ...residentRow,
+    current_status: "Chuyển đến",
+    status_start_date: "2026-11-25",
+    status_end_date: null,
+  };
+  events = [
+    {
+      id: 10,
+      resident_id: 100,
+      status: "Chuyển đến",
+      start_date: "2026-11-25",
+      end_date: null,
+      created_at: new Date("2026-11-25T00:00:00Z"),
+    },
+  ];
+  tokenRevokeCalls = 0;
+
+  const res2 = await updateResidencyStatus(
+    100,
+    { status: "Chuyển đi", startDate: "2026-11-01", endDate: "2026-11-10" },
+    2,
+  );
+  assert.equal(res2.currentStatus, "Chuyển đến");
+  assert.equal(tokenRevokeCalls, 0);
+
+  // 3. Future Chuyển đi (29/11) must NOT revoke token early
+  const res3 = await updateResidencyStatus(
+    100,
+    { status: "Chuyển đi", startDate: "2026-11-29", endDate: "" },
+    2,
+  );
+  assert.equal(res3.currentStatus, "Chuyển đến");
+  assert.equal(tokenRevokeCalls, 0);
+
+  // 4. Failure on UPDATE token_version rolls back the event and resident status update
+  failTokenUpdate = true;
+  const beforeCount = events.length;
+  await assert.rejects(
+    updateResidencyStatus(
+      100,
+      { status: "Chuyển đi", startDate: "2026-11-28", endDate: "" },
+      2,
+    ),
+    /DB error updating token_version/,
+  );
+  assert.equal(rolledBack, 1);
+  assert.equal(events.length, beforeCount);
+  assert.equal(residentRow.current_status, "Chuyển đến");
+  assert.equal(released, 4);
 });

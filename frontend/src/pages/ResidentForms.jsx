@@ -31,11 +31,13 @@ export function AddResidentForm({
   relationship,
   setRelationship,
   hasHeadForSelectedApartment,
+  submitting = false,
   busy,
   loading,
   onSubmit,
   onClose,
 }) {
+  const isSubmitting = Boolean(submitting);
   return (
     <form className="card form" onSubmit={onSubmit}>
       <h2>Thêm chủ hộ hoặc nhân khẩu</h2>
@@ -48,6 +50,7 @@ export function AddResidentForm({
         Căn hộ
         <select
           required
+          disabled={isSubmitting}
           value={apartmentId}
           onChange={(event) => onApartmentChange(event.target.value)}
         >
@@ -64,6 +67,7 @@ export function AddResidentForm({
         <input
           ref={nameInputRef}
           required
+          disabled={isSubmitting}
           minLength={2}
           maxLength={120}
           value={fullName}
@@ -76,6 +80,7 @@ export function AddResidentForm({
         <input
           type="date"
           required
+          disabled={isSubmitting}
           max={getBusinessDate()}
           value={birthDate}
           onChange={(event) => setBirthDate(event.target.value)}
@@ -84,6 +89,7 @@ export function AddResidentForm({
       <label>
         Số CCCD/CMND (tùy chọn cho trẻ em, 9 hoặc 12 chữ số)
         <input
+          disabled={isSubmitting}
           value={cccd}
           onChange={(event) => setCccd(event.target.value)}
           placeholder="Ví dụ: 001206012345"
@@ -94,6 +100,7 @@ export function AddResidentForm({
         Quan hệ với chủ hộ
         <select
           required
+          disabled={isSubmitting}
           value={relationship}
           onChange={(event) => setRelationship(event.target.value)}
         >
@@ -105,11 +112,19 @@ export function AddResidentForm({
         </select>
       </label>
       <div className="row-actions">
-        <button type="submit" disabled={busy || apartments.length === 0}>
-          {busy ? "Đang lưu…" : "Lưu & Nhập tiếp"}
+        <button
+          type="submit"
+          disabled={isSubmitting || Boolean(busy) || apartments.length === 0}
+        >
+          {isSubmitting ? "Đang lưu…" : "Lưu & Nhập tiếp"}
         </button>
         {onClose && (
-          <button type="button" className="link" onClick={onClose}>
+          <button
+            type="button"
+            className="link"
+            disabled={isSubmitting}
+            onClick={onClose}
+          >
             Đóng
           </button>
         )}

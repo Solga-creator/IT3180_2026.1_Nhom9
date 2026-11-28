@@ -86,7 +86,7 @@ Trường body không có dấu `?` là bắt buộc. Tên object response dư�
 | POST `/payments` | ADMIN, TREASURER | `billId, amount, paymentMethod, payerName, idempotencyKey, note?` | 201 mới / 200 replay: `payment, bill, replayed` |
 | POST `/payments/:paymentId/void` | ADMIN, TREASURER | `reason` | `payment, bill` đã tính lại |
 | GET `/payments/:paymentId/receipt` | Nội bộ | Không | `receipt` |
-| GET `/apartments/:id/payments` | Nội bộ | Bộ lọc lịch sử căn | `payments, contributions` mỗi nhóm có items/pagination; `households` và `debtsByHousehold` để tách nợ hộ cũ/mới |
+| GET `/apartments/:id/payments` | Nội bộ | Bộ lọc lịch sử căn | `payments, contributions` mỗi nhóm có items/pagination *(bỏ tách hộ cũ/mới theo DEC-03)* |
 | GET `/campaigns` | Nội bộ, RESIDENT | page/pageSize, `status?=OPEN|CLOSED` | `items` Campaign, pagination; không lộ danh sách người đóng cho RESIDENT |
 | POST `/campaigns` | ADMIN, BQT, ACCOUNTANT | `name, fundCode, startDate, endDate` | 201: `campaign` OPEN |
 | PATCH `/campaigns/:id/status` | ADMIN, BQT, ACCOUNTANT | `status: "CLOSED"` | `campaign`; không hỗ trợ mở lại |
@@ -97,14 +97,13 @@ Trường body không có dấu `?` là bắt buộc. Tên object response dư�
 | GET `/me/bills/:billId/receipts` | RESIDENT | page/pageSize | `items` Receipt, pagination |
 | GET `/me/contributions` | RESIDENT | page/pageSize, `campaignId?` | `items` Contribution, pagination |
 | GET `/me/contributions/:id/receipt` | RESIDENT | Không | `receipt` |
-| POST `/apartments/:id/household-transfers` | ADMIN, BQT | `headResident, reason` | 201: `previousHouseholdId, householdId, effectiveDate` |
 | PATCH `/accounts/:id/role` | ADMIN | `role` trong 5 vai trò | `user` public, không trả secret; không biến staff thành resident nếu thiếu liên kết hồ sơ phù hợp |
 | GET `/audit-logs` | ADMIN | Bộ lọc audit | `items` audit + pagination |
 | GET `/reports/collections/export` | Nội bộ | Bộ lọc báo cáo mục 6 | Binary XLSX |
 
-`RateConfig`: id, serviceUnitPrice, managementUnitPrice, effectiveFrom, note. `headResident` gồm `fullName, birthDate, cccd?`; dùng cùng validation S1, server đặt quan hệ Chủ hộ và tạo hồ sơ thuộc hộ mới. Không nhận householdId hoặc ngày chuyển lùi từ body.
+`RateConfig`: id, serviceUnitPrice, managementUnitPrice, effectiveFrom, note. *(Endpoint `POST /apartments/:id/household-transfers` không thuộc phạm vi v1.0 theo DEC-03.)*
 
-`eligible` preview chứa `apartmentId, householdId, roomNumber, payerName, area, serviceUnitPrice, managementUnitPrice, serviceFee, managementFee, totalDue`; `skipped` chứa căn và lý do bỏ qua. Tổng preview gồm `eligibleCount, skippedCount, totalDue`. Thiếu lịch sử trả 422 toàn preview, không đưa căn thiếu vào nhóm “trống”. Preview thay thế chỉ có một hóa đơn đích; token ràng buộc actor/kỳ/mục đích/ID như hướng dẫn S2.
+`eligible` preview chứa `apartmentId, householdId, roomNumber, payerName, area, serviceUnitPrice, managementUnitPrice, serviceFee, managementFee, totalDue`; `skipped` chứa căn trống và lý do bỏ qua. Tổng preview gồm `eligibleCount, skippedCount, totalDue`. Chặn phát hành mới kỳ quá khứ theo DEC-02 (`400`/`422`) hoặc thiếu đơn giá hiệu lực (`422`). Preview thay thế (`replacesBillId`) chỉ có một hóa đơn đích; token ràng buộc actor/kỳ/mục đích/ID như hướng dẫn S2 *(giữ theo DEC-05)*.
 
 ## 5. Ví dụ thu tiền và lỗi
 

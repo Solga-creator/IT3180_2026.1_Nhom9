@@ -75,8 +75,12 @@ export function resolveEffectiveResidencyStatus(
   return fallback;
 }
 
-function mapResident(row, events, { includeHistory = true } = {}) {
-  const effective = resolveEffectiveResidencyStatus(row, events);
+function mapResident(
+  row,
+  events,
+  { includeHistory = true, referenceDate = getBusinessDate() } = {},
+) {
+  const effective = resolveEffectiveResidencyStatus(row, events, referenceDate);
   return {
     id: row.id,
     householdId: row.household_id,
@@ -99,7 +103,11 @@ function mapResident(row, events, { includeHistory = true } = {}) {
   };
 }
 
-async function getResidentById(id, executor = pool) {
+async function getResidentById(
+  id,
+  executor = pool,
+  referenceDate = getBusinessDate(),
+) {
   const [rows] = await executor.query(
     `SELECT
       r.id,
@@ -127,7 +135,7 @@ async function getResidentById(id, executor = pool) {
   if (!rows[0]) return null;
 
   const events = await getResidencyEvents(id, executor);
-  return mapResident(rows[0], events);
+  return mapResident(rows[0], events, { referenceDate });
 }
 
 export async function getResidentHistoryById(residentId) {
@@ -175,20 +183,13 @@ export async function listResidents(searchInput = "", options = {}) {
   const status = String(options?.status || "").trim();
   const apartmentId = Number(options?.apartmentId) || 0;
   const includeHistory = options?.includeHistory !== false;
+  const referenceDate = options?.referenceDate || getBusinessDate();
 
   const conditions = [];
   const values = [];
   if (search) {
-    conditions.push(
-      status || apartmentId
-        ? "(a.room_number LIKE ? OR r.full_name LIKE ?)"
-        : "a.room_number LIKE ? OR r.full_name LIKE ?",
-    );
+    conditions.push("(a.room_number LIKE ? OR r.full_name LIKE ?)");
     values.push(`%${search}%`, `%${search}%`);
-  }
-  if (status) {
-    conditions.push("r.current_status = ?");
-    values.push(status);
   }
   if (apartmentId > 0) {
     conditions.push("a.id = ?");
@@ -247,26 +248,91 @@ export async function listResidents(searchInput = "", options = {}) {
     eventsByResident.set(event.resident_id, events);
   }
 
-  return rows.map((row) =>
-    mapResident(row, eventsByResident.get(row.id) || [], { includeHistory }),
+  const mapped = rows.map((row) =>
+    mapResident(row, eventsByResident.get(row.id) || [], {
+      includeHistory,
+      referenceDate,
+    }),
   );
+
+  return status
+    ? mapped.filter((resident) => resident.currentStatus === status)
+    : mapped;
+}
+
+export async function getEffectiveResidencyStatuses(
+  residentIds,
+  referenceDate = getBusinessDate(),
+) {
+  const normalizedIds = [
+    ...new Set(
+      (Array.isArray(residentIds) ? residentIds : [])
+        .map((id) => Number(id))
+        .filter((id) => Number.isInteger(id) && id > 0),
+    ),
+  ];
+  const statusMap = new Map();
+  if (normalizedIds.length === 0) return statusMap;
+
+  const placeholders = normalizedIds.map(() => "?").join(", ");
+  const [residentRows] = await pool.query(
+    `SELECT
+      id,
+      current_status,
+      DATE_FORMAT(status_start_date, '%Y-%m-%d') AS status_start_date,
+      DATE_FORMAT(status_end_date, '%Y-%m-%d') AS status_end_date
+     FROM residents
+     WHERE id IN (${placeholders})`,
+    normalizedIds,
+  );
+  if (residentRows.length === 0) return statusMap;
+
+  const foundIds = residentRows.map((row) => row.id);
+  const eventPlaceholders = foundIds.map(() => "?").join(", ");
+  const [eventRows] = await pool.query(
+    `SELECT
+      id,
+      resident_id,
+      status,
+      DATE_FORMAT(start_date, '%Y-%m-%d') AS start_date,
+      DATE_FORMAT(end_date, '%Y-%m-%d') AS end_date
+     FROM residency_events
+     WHERE resident_id IN (${eventPlaceholders})
+     ORDER BY start_date DESC, id DESC`,
+    foundIds,
+  );
+
+  const eventsByResident = new Map();
+  for (const event of eventRows) {
+    const list = eventsByResident.get(event.resident_id) || [];
+    list.push(event);
+    eventsByResident.set(event.resident_id, list);
+  }
+
+  for (const row of residentRows) {
+    const effective = resolveEffectiveResidencyStatus(
+      row,
+      eventsByResident.get(row.id) || [],
+      referenceDate,
+    );
+    statusMap.set(row.id, effective.currentStatus);
+  }
+  return statusMap;
 }
 
 export async function listResidentsByStatus(status, searchInput = "", options = {}) {
-  // Resolve dates through the same path as the on-screen resident list before filtering.
   const residents = await listResidents(searchInput, {
+    status,
     apartmentId: options.apartmentId,
     includeHistory: false,
   });
-  return residents
-    .filter((resident) => resident.currentStatus === status)
-    .map((resident) => ({
-      room_number: resident.roomNumber,
-      full_name: resident.fullName,
-      birth_date: resident.birthDate,
-      relationship_to_head: resident.relationship,
-      current_status: resident.currentStatus,
-    }));
+  return residents.map((resident) => ({
+    room_number: resident.roomNumber,
+    full_name: resident.fullName,
+    birth_date: resident.birthDate,
+    relationship_to_head: resident.relationship,
+    current_status: resident.currentStatus,
+  }));
 }
 
 export async function createResident(input) {
@@ -355,12 +421,14 @@ export async function createResident(input) {
 
 export async function createResidencyEvent(residentId, event, userId) {
   const connection = await pool.getConnection();
+  const referenceDate = getBusinessDate();
   try {
     await connection.beginTransaction();
 
     const [residents] = await connection.query(
-      `SELECT id, household_id,
-              DATE_FORMAT(status_start_date, '%Y-%m-%d') AS status_start_date
+      `SELECT id, household_id, current_status,
+              DATE_FORMAT(status_start_date, '%Y-%m-%d') AS status_start_date,
+              DATE_FORMAT(status_end_date, '%Y-%m-%d') AS status_end_date
        FROM residents
        WHERE id = ?
        FOR UPDATE`,
@@ -371,8 +439,15 @@ export async function createResidencyEvent(residentId, event, userId) {
       return null;
     }
 
+    const beforeEvents = await getResidencyEvents(residentId, connection);
+    const beforeEffective = resolveEffectiveResidencyStatus(
+      residents[0],
+      beforeEvents,
+      referenceDate,
+    );
+
     const normalizedEndDate = event.endDate ? event.endDate : null;
-    await connection.query(
+    const [insertResult] = await connection.query(
       `INSERT INTO residency_events (
         resident_id,
         status,
@@ -384,31 +459,78 @@ export async function createResidencyEvent(residentId, event, userId) {
       [residentId, event.status, event.startDate, normalizedEndDate, userId],
     );
 
+    const insertedEvent = {
+      id: Number(insertResult?.insertId) || Number.MAX_SAFE_INTEGER,
+      resident_id: residentId,
+      status: event.status,
+      start_date: event.startDate,
+      end_date: normalizedEndDate,
+    };
+    const queriedAfter = await getResidencyEvents(residentId, connection);
+    const hasInsertedInQuery = queriedAfter.some(
+      (ev) =>
+        Number(ev.id) === Number(insertResult?.insertId) &&
+        ev.status === event.status &&
+        String(ev.start_date) === String(event.startDate),
+    );
+    const afterEvents = hasInsertedInQuery
+      ? queriedAfter
+      : [...beforeEvents, insertedEvent].sort(
+          (a, b) =>
+            String(b.start_date || b.startDate || "").localeCompare(
+              String(a.start_date || a.startDate || ""),
+            ) || Number(b.id || 0) - Number(a.id || 0),
+        );
+    const afterEffective = resolveEffectiveResidencyStatus(
+      residents[0],
+      afterEvents,
+      referenceDate,
+    );
+
     const effective = isResidencyEventEffective(
       { startDate: event.startDate, endDate: normalizedEndDate },
       residents[0].status_start_date || null,
+      referenceDate,
     );
-    if (effective) {
+    const statusChanged =
+      afterEffective.currentStatus !== beforeEffective.currentStatus ||
+      afterEffective.statusStartDate !== beforeEffective.statusStartDate ||
+      afterEffective.statusEndDate !== beforeEffective.statusEndDate;
+
+    if (effective || statusChanged) {
       await connection.query(
         `UPDATE residents
          SET current_status = ?,
              status_start_date = ?,
              status_end_date = ?
          WHERE id = ?`,
-        [event.status, event.startDate, normalizedEndDate, residentId],
+        [
+          afterEffective.currentStatus,
+          afterEffective.statusStartDate,
+          afterEffective.statusEndDate,
+          residentId,
+        ],
       );
-      if (event.status === "Chuyển đi") {
-        await connection.query(
-          `UPDATE users
-           SET token_version = COALESCE(token_version, 0) + 1
-           WHERE resident_id = ?
-             AND role = 'RESIDENT'`,
-          [residentId],
-        );
-      }
     }
 
-    const resident = await getResidentById(residentId, connection);
+    if (
+      beforeEffective.currentStatus !== "Chuyển đi" &&
+      afterEffective.currentStatus === "Chuyển đi"
+    ) {
+      await connection.query(
+        `UPDATE users
+         SET token_version = COALESCE(token_version, 0) + 1
+         WHERE resident_id = ?
+           AND role = 'RESIDENT'`,
+        [residentId],
+      );
+    }
+
+    const resident = await getResidentById(
+      residentId,
+      connection,
+      referenceDate,
+    );
     await connection.commit();
     return resident;
   } catch (error) {

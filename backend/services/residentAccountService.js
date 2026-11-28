@@ -3,7 +3,10 @@ import { AppError } from "../helpers/AppError.js";
 import { debug } from "../helpers/debug.js";
 import { validateResidentAccount } from "../validators/accountValidation.js";
 import { generateTemporaryPassword } from "./accountService.js";
-import { resolveEffectiveResidencyStatus } from "../repositories/residentRepository.js";
+import {
+  getEffectiveResidencyStatuses,
+  resolveEffectiveResidencyStatus,
+} from "../repositories/residentRepository.js";
 import {
   clearFailedLogin,
   createUser,
@@ -33,12 +36,21 @@ export function maskCccd(cccd, isSelf = false) {
 
 export async function getResidentAccountOptions() {
   const rows = await listResidentsWithoutAccount();
-  return rows.map((row) => ({
-    id: row.id,
-    fullName: row.full_name,
-    roomNumber: row.room_number,
-    relationship: row.relationship_to_head,
-  }));
+  if (rows.length === 0) return [];
+  const statusMap = await getEffectiveResidencyStatuses(
+    rows.map((row) => row.id),
+  );
+  return rows
+    .filter((row) => {
+      const effectiveStatus = statusMap.get(row.id);
+      return Boolean(effectiveStatus) && effectiveStatus !== "Chuyển đi";
+    })
+    .map((row) => ({
+      id: row.id,
+      fullName: row.full_name,
+      roomNumber: row.room_number,
+      relationship: row.relationship_to_head,
+    }));
 }
 
 export async function getResidentAccounts() {
@@ -75,7 +87,15 @@ export async function registerResidentAccount(input) {
       "Không tìm thấy nhân khẩu khớp số phòng và họ tên. Vui lòng liên hệ Ban quản trị.",
     );
   }
-  if (resident.current_status === "Chuyển đi") {
+  const statusMap = await getEffectiveResidencyStatuses([resident.id]);
+  const effectiveStatus = statusMap.get(resident.id);
+  if (!effectiveStatus) {
+    throw new AppError(
+      404,
+      "Không tìm thấy nhân khẩu khớp số phòng và họ tên. Vui lòng liên hệ Ban quản trị.",
+    );
+  }
+  if (effectiveStatus === "Chuyển đi") {
     throw new AppError(
       400,
       "Nhân khẩu đã chuyển đi, không thể đăng ký tài khoản cư dân.",
@@ -117,6 +137,21 @@ export async function approveResidentAccount(idInput) {
   const target = await findUserById(id);
   if (!target || target.role !== "RESIDENT") {
     throw new AppError(404, "Tài khoản cư dân không tồn tại.");
+  }
+  const residentId = Number(target.resident_id);
+  if (!Number.isInteger(residentId) || residentId <= 0) {
+    throw new AppError(404, "Nhân khẩu không tồn tại.");
+  }
+  const statusMap = await getEffectiveResidencyStatuses([residentId]);
+  const effectiveStatus = statusMap.get(residentId);
+  if (!effectiveStatus) {
+    throw new AppError(404, "Nhân khẩu không tồn tại.");
+  }
+  if (effectiveStatus === "Chuyển đi") {
+    throw new AppError(
+      400,
+      "Nhân khẩu đã chuyển đi, không thể duyệt tài khoản cư dân.",
+    );
   }
 
   await updateAccountStatus(id, "ACTIVE");
@@ -175,7 +210,12 @@ export async function issueResidentAccount(input) {
   if (!resident) {
     throw new AppError(404, "Nhân khẩu không tồn tại.");
   }
-  if (resident.current_status === "Chuyển đi") {
+  const statusMap = await getEffectiveResidencyStatuses([resident.id]);
+  const effectiveStatus = statusMap.get(resident.id);
+  if (!effectiveStatus) {
+    throw new AppError(404, "Nhân khẩu không tồn tại.");
+  }
+  if (effectiveStatus === "Chuyển đi") {
     throw new AppError(
       400,
       "Nhân khẩu đã chuyển đi, không thể cấp tài khoản cư dân.",
@@ -232,12 +272,6 @@ export async function getMyResidence(user) {
   const residence = await findResidenceForUser(user.id);
   if (!residence) {
     throw new AppError(404, "Tài khoản chưa gắn với nhân khẩu.");
-  }
-  if (residence.current_status === "Chuyển đi") {
-    throw new AppError(
-      403,
-      "Nhân khẩu đã chuyển đi, quyền truy cập thông tin hộ gia đình cũ đã kết thúc.",
-    );
   }
 
   const [members, events] = await Promise.all([

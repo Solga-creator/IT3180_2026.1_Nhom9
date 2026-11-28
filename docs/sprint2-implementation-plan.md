@@ -15,9 +15,9 @@ Ngày lập: **28/11/2026**. Trạng thái: **Planned — chưa triển khai cá
 ## Global Constraints
 
 - Giữ 11 US S2 (`US-006`–`US-014`, `US-018`, `US-019`), nối với 8 US S1. Không thêm xe, điện nước, cổng thanh toán hay ứng dụng native vào v1.0.
-- Không sửa mục quan hệ mặc định khi đổi căn trong form theo yêu cầu người dùng; backend vẫn phải chặn chủ hộ trùng. Đây là giới hạn đã chấp nhận, không phải task bắt buộc của kế hoạch này.
+- Bảo toàn hành vi S1 đã sửa: kiểm tra chủ hộ độc lập với bảng đang lọc để chọn quan hệ khi đổi căn; khóa input khi POST đang lưu nhưng vẫn cho đổi căn khi kiểm tra chủ hộ lỗi. Backend tiếp tục chặn chủ hộ trùng; không khôi phục giới hạn cũ khi áp giao diện S2.
 - Ngày nghiệp vụ `Asia/Ho_Chi_Minh`, dùng `shared/businessDate.mjs`; thời điểm lưu UTC. Tiền VND làm tròn từng khoản tới đồng, tính bằng số nguyên/decimal chính xác.
-- Đề xuất nghiệp vụ cần nhóm xác nhận: hộ chịu phí ở đầu kỳ, không chia phí theo ngày, hộ vào giữa tháng tính từ kỳ sau, căn trống đầu kỳ được bỏ qua; nợ hộ cũ không tự chuyển sang hộ mới.
+- Phạm vi đã chốt ngày 28/11/2026 (`DEC-01/02/03/05`): chỉ phát hành hóa đơn cho **kỳ hiện tại hoặc tương lai** (**bỏ sinh bù kỳ cũ** và bảng `apartment_area_versions`), không chia phí theo ngày, căn trống bỏ qua; **bỏ chuyển giao hộ A → B** tách lịch sử & nợ trong v1.0 (giữ mô hình 1 hộ/căn của S1); **giữ hủy & phát hành thay thế hóa đơn sai** (`cancel/replace` + `revision`, chặn khi còn khoản thu `VALID`).
 - Hủy khoản ghi nhận không đồng nghĩa hoàn tiền thực tế; v1.0 không hoàn tiền tự động/khóa sổ kế toán. Thu nhiều kỳ theo lần lượt từng hóa đơn trong một panel, không tạo giao dịch gộp nhiều hóa đơn.
 - Không xóa chứng từ; hóa đơn hủy và giao dịch hủy có nhãn riêng. Không cho sửa snapshot trực tiếp. Mọi endpoint kiểm tra quyền ở backend, không chỉ ẩn menu.
 - Code S1 và thay đổi chưa commit phải được bảo toàn. Không seed, restore hoặc chạy migration thử vào database Cloud đang dùng demo.
@@ -105,19 +105,20 @@ Các lệnh trong phần này là **lệnh sẽ chạy khi triển khai**, chưa
 **Interfaces:** đầu vào là trạng thái S1 hiện có; đầu ra là commit/baseline hoặc bản kê thay đổi, thông số DB thử và các quy ước đã xác nhận.
 
 - [ ] Ghi xác nhận quy tắc tại Global Constraints; đánh giá lại 38 SP, năng lực từng người và mốc D1.
-- [ ] Chạy `npm test` và `npm run test:e2e` ở backend; `npm run lint`, `npm run build`, `node --test tests/api.test.mjs` ở frontend; lưu số test thực tế, không sao chép con số 58 cũ. Nếu build vướng quyền `dist/assets`, ghi lỗi và dùng `npm run build -- --outDir <thư-mục-tạm>` để phân biệt lỗi code với môi trường.
+- [ ] Chạy `npm test` và `npm run test:e2e` ở backend; `npm run lint`, `npm run build`, `node --test tests/*.test.mjs` ở frontend; ghi kết quả thực tế vào [báo cáo S1](test-report-s1.md), không sao chép tổng test cũ. Nếu build vướng quyền `dist/assets`, ghi lỗi và dùng `npm run build -- --outDir <thư-mục-tạm>` để phân biệt lỗi code với môi trường.
 - [ ] Chuẩn bị DB thử riêng, snapshot baseline và fixture; tuyệt đối không dùng quyền reset DB demo.
+- [ ] Smoke test S1 trên trình duyệt và DB thử, lưu bằng chứng với phiên bản code tương ứng. Khi chốt baseline commit, đưa `frontend/tests/residentsRefresh.test.mjs` (hiện untracked) vào repo cùng các thay đổi S1 cần thiết; kiểm tra máy thành viên chạy được đầy đủ `tests/*.test.mjs`. Không tự coi test hook/effect là bằng chứng trình duyệt hoặc MySQL thật.
 - [ ] Ghi lỗi còn mở/giới hạn đã chấp nhận và giao người xử lý; chỉ hoàn tất T00 khi baseline có bằng chứng.
 
-### T01 — Lịch sử hộ, diện tích và migration bảo toàn S1
+### T01 — Migration 6 bảng tài chính/audit & bảo toàn dữ liệu S1
 
-**Files:** `backend/config/sprint2Migration.js`, `database.js`, `residentRepository.js`, `apartmentRepository.js`, `services/householdService.js`, `api/routes/householdRoutes.js`, `api/handlers/householdHandlers.js`; test `backend/tests/householdLifecycle.test.js`, `backend/tests/db/sprint2Migration.test.js`.
-**Interfaces:** dùng ngày Việt Nam; tạo nền 7 bảng mới, mở rộng hộ/nhân khẩu; xuất `transferHousehold(...)` và query hộ/diện tích theo ngày đầu kỳ cho T04.
+**Files:** `backend/config/sprint2Migration.js`, `database.js`, `apartmentRepository.js`, `residentRepository.js`, `accountService.js`; test `backend/tests/db/sprint2Migration.test.js`.
+**Interfaces:** tạo nền **6 bảng mới** (`fee_rate_configs`, `apartment_bills`, `fee_payments`, `voluntary_campaigns`, `voluntary_contributions`, `audit_logs`, kèm `ON DELETE RESTRICT` và `active_apartment_id` cho cancel/replace); giữ nguyên bảng `households` (`UNIQUE(apartment_id)`) của S1 *(bỏ `apartment_area_versions` và `transferHousehold` theo DEC-02/03)*.
 
-- [ ] Viết test chuyển hộ A còn nợ → B: ID khác, nợ A giữ nguyên, tài khoản A mất quyền; khoảng hộ không chồng; không xóa được căn có chứng từ. Viết test migration chạy hai lần không mất dữ liệu, lỗi giữa chừng có thể tiếp tục an toàn.
-- [ ] Chạy `node --test tests/householdLifecycle.test.js`; xác nhận thất bại do hành vi chưa có trước khi triển khai.
-- [ ] Viết migration và thao tác chuyển hộ theo spec mục 2/3.5/3.6; MySQL DDL có implicit commit nên không giả định rollback toàn migration. Kiểm tra trước/sau từng bước và backup trước thay unique cũ. Khóa căn trước khi đóng/mở hộ.
-- [ ] Chạy lại test; kiểm tra migration trên DB thử riêng và ca `FTC-S2-27`, `30`, `33`, `42`. Không xóa hồ sơ/tài khoản được chứng từ tham chiếu.
+- [ ] Viết test chặn xóa căn/nhân khẩu/tài khoản đã có chứng từ tài chính và test migration chạy hai lần không mất dữ liệu, lỗi giữa chừng có thể tiếp tục an toàn.
+- [ ] Viết migration 6 bảng mới + mở rộng `users.role` theo spec mục 2; MySQL DDL có implicit commit nên không giả định rollback toàn migration. Kiểm tra trước/sau từng bước qua `information_schema` và backup trước khi chạy trên môi trường mới.
+- [ ] Bổ sung chặn xóa căn có chứng từ trong `deleteEmptyApartmentById(...)`: giữ khóa dòng căn (`FOR UPDATE`), kiểm tra nhân khẩu/chứng từ và DELETE trong cùng transaction. Không quay về đếm/kiểm tra rồi xóa ngoài transaction.
+- [ ] Chạy lại test; kiểm tra migration trên DB thử riêng và ca `FTC-S2-33`. Không xóa hồ sơ/tài khoản được chứng từ tham chiếu.
 - [ ] Rà soát thay đổi S1 với Nhật và ghi kết quả/commit chỉ các file của task.
 
 ### T02 — Quyền và audit dùng ngay từ API đầu tiên
@@ -204,7 +205,7 @@ Các lệnh trong phần này là **lệnh sẽ chạy khi triển khai**, chưa
 
 - [ ] Test IDOR bill/payment/contribution khác hộ, nhân khẩu gia nhập sau, hộ kết thúc, chuyển đi theo ngày hiệu lực dù cột lưu cũ chưa đổi, tài khoản vừa đổi quyền; tất cả không lộ dữ liệu.
 - [ ] Chạy `node --test tests/residentBillingAccess.test.js`, xác nhận ca mới thất bại.
-- [ ] Suy ra nhân khẩu/hộ từ user đã xác thực và gọi resolver có ngày Việt Nam; giới hạn kỳ theo ngày gia nhập, chỉ hiện nợ hộ hiện tại cho cư dân. Mọi link tải/in phải kiểm quyền riêng.
+- [ ] Suy ra nhân khẩu/hộ từ user đã xác thực; tái sử dụng `resolveEffectiveResidencyStatus(...)` với ngày Việt Nam và helper batch `getEffectiveResidencyStatuses(...)` khi phù hợp, không chỉ đọc `current_status`. Helper batch dùng pool; nếu kiểm tra trong transaction phải dùng cùng connection cho dữ liệu/lịch sử. Giữ kiểm tra trạng thái hiệu lực khi duyệt/đăng nhập và thu hồi phiên của S1; bổ sung giới hạn hộ/ngày gia nhập, chỉ hiện nợ hộ hiện tại cho cư dân. Mọi link tải/in phải kiểm quyền riêng.
 - [ ] Chạy lại test và `FTC-S2-25`, `27`, `42`; thử tài khoản cư dân và nhân sự thật trên DB thử.
 - [ ] Review với Vĩ, ghi bằng chứng/commit.
 
@@ -216,6 +217,7 @@ Các lệnh trong phần này là **lệnh sẽ chạy khi triển khai**, chưa
 - [ ] Viết test bộ tạo query giữ apartmentId/hộ/kỳ, tiền nhập chuyển sang số đồng đúng và idempotencyKey được giữ khi retry; chạy `node --test tests/billingFilters.test.mjs` để xác nhận ca mới thất bại.
 - [ ] Áp dụng tokens và sidebar theo [SVG](../design/bluemoon-ui-redesign/README.md); làm danh sách/form/modal trước trang trí. Tk BQT chỉ ADMIN; các mẫu chưa có board riêng phải dùng cùng thành phần và kiểm quyền.
 - [ ] Nối màn hình billing/campaign/audit/cư dân; giữ bộ lọc và vị trí sau lưu; điền sẵn nợ/ngày Việt Nam, chuyển kỳ tiếp theo trong cùng panel; không tự trộn hộ cũ/mới hoặc tạo lại key khi chỉ thử lại khoản thu.
+- [ ] Khi sửa trang S1, giữ cơ chế bỏ response lỗi thời và tải lại bằng bộ lọc URL hiện tại, loading khi Back/Forward, không để reload đóng thao tác mới. Bảo toàn kiểm tra chủ hộ độc lập với bảng lọc, bảo vệ draft và phân biệt trạng thái POST đang lưu với kiểm tra chủ hộ đang tải/lỗi; chạy cả `frontend/tests/residentsRefresh.test.mjs`.
 - [ ] Chạy test frontend + `npm run lint` + build; thao tác desktop/390px, bàn phím/modal Escape/focus; kiểm nhãn lỗi, loading/empty/success, mất mạng sau lưu và in lại. `UX-S2-01` phải có kết quả thật.
 - [ ] Đối chiếu đủ các route S1 với checklist, review giao diện với Bảo và commit. Không để thay đổi thẩm mỹ vô tình thay quy tắc dữ liệu.
 

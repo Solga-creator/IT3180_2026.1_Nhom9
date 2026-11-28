@@ -10,7 +10,7 @@
 - [Kế hoạch triển khai Sprint 2 — 12 task, phân công và tiêu chí Done](docs/sprint2-implementation-plan.md).
 - [Bộ thiết kế giao diện mới và hướng dẫn nhập Figma](design/bluemoon-ui-redesign/README.md) — bản đề xuất, chưa áp vào frontend.
 
-Lưu ý: số test S1 trong báo cáo nền cần được chạy lại và cập nhật sau các sửa gần nhất. Lần xác minh hồi quy gần nhất chỉ chạy 26 test liên quan, không phải toàn bộ bộ kiểm thử. Sprint 2 hiện ở trạng thái kế hoạch.
+Lưu ý (cập nhật 28/11/2026, nền commit `b065008` + working tree local): bộ test tự động đã được chạy lại đầy đủ sau đợt rà soát cuối Sprint 1, đạt **70/70 PASS** (`56` backend unit/functional + `8` backend HTTP integration + `6` frontend tests gồm `api.test.mjs` và file untracked `residentsRefresh.test.mjs`; `oxlint` `0 warnings/0 errors`; build mặc định `frontend/dist/assets` còn lỗi quyền `EPERM`, build kiểm chứng vào `node_modules/.cache/s1-final-review-verify` thành công). Chưa chạy kiểm thử trên MySQL thật hoặc kiểm tra thủ công trên trình duyệt trong lần xác minh này. Sprint 2 hiện ở trạng thái kế hoạch.
 
 > **Phạm vi nghiệm thu hiện tại (Sprint 1):** Hoàn thiện nền tảng **quản lý danh mục căn hộ, hộ gia đình & biến động nhân khẩu, xuất báo cáo Excel nhân khẩu và quản lý tài khoản/xác thực phân quyền** (`8/8 Must User Stories`: `US-001`..`005`, `US-015`..`017`). Phân hệ trung tâm về **bảng thu phí định kỳ, ghi nhận thanh toán, công nợ, quỹ tự nguyện và báo cáo thu** (`11 User Stories`: `US-006`..`014`, `US-018`..`019`) thuộc phạm vi **Sprint 2** và đã được thiết kế chi tiết tại [`docs/sprint2-technical-base.md`](docs/sprint2-technical-base.md) (hai module `backend/strategies/feeCalculationStrategy.js` và `backend/observers/domainEventBus.js` là khung nền tảng chuẩn bị cho Sprint 2).
 
@@ -204,7 +204,7 @@ Chạy API integration tests:
 npm run test:e2e
 ```
 
-Bộ kiểm thử tự động hiện có **58/58 test cases đạt 100% PASS** (50 backend unit/functional tests + 7 backend HTTP integration tests + 1 frontend API client test), bao phủ toàn bộ 8/8 User Stories của Sprint 1 (`US-001`..`005`, `US-015`..`017`) cùng các quy tắc bảo mật `JWT_SECRET`, thu hồi phiên cũ `token_version`, reset mật khẩu tạm ngẫu nhiên, thu hồi quyền xem hộ khi chuyển đi, tính trạng thái cư trú động theo ngày hiệu lực và lọc chính xác theo `apartmentId`. *(Lưu ý: các test tự động trong `backend/tests` sử dụng mock database để chạy độc lập; việc kiểm chứng kết nối MySQL thực tế và giao diện trình duyệt được thực hiện qua `npm run seed` và kịch bản demo dưới đây).*
+Bộ kiểm thử tự động (chạy ngày `28/11/2026`, nền commit `b065008` + working tree local) đạt **70/70 PASS** (`0 fail`, `0 skip`: `56` backend unit/functional tests + `8` backend HTTP integration tests + `6` frontend tests trong `tests/*.test.mjs`; `oxlint` `0 warnings, 0 errors`), bao phủ 8/8 User Stories của Sprint 1 (`US-001`..`005`, `US-015`..`017`), khóa `FOR UPDATE` khi xóa căn hộ trống, các quy tắc bảo mật `JWT_SECRET`, `token_version`, reset mật khẩu tạm, tính trạng thái cư trú hiệu lực theo ngày VN cho lọc API/Excel lẫn điều kiện ứng viên/đăng ký/cấp/duyệt/đăng nhập/xem hộ của cư dân và vòng đời bộ lọc/modal/form trên `ResidentsPage.jsx`. *(Lưu ý: các test validation không truy cập DB; các test có tương tác dữ liệu dùng mock DB và `residentsRefresh.test.mjs` chạy qua hook/effect harness, chưa thay thế kiểm thử MySQL thật và trình duyệt thật. Chi tiết xem tại [`docs/test-report-s1.md`](docs/test-report-s1.md)).*
 
 Kiểm tra frontend:
 
@@ -212,7 +212,7 @@ Kiểm tra frontend:
 cd frontend
 npm run lint
 npm run build
-node --test tests/api.test.mjs
+node --test tests/*.test.mjs
 ```
 
 `npm run build` tạo output production trong `frontend/dist/`; đây là file sinh tự động, không chỉnh sửa thủ công.

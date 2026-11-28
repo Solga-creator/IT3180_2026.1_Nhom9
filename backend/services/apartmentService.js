@@ -1,7 +1,6 @@
 import {
-  countResidentsByApartmentId,
   createApartment,
-  deleteApartmentById,
+  deleteEmptyApartmentById,
   findApartmentById,
   findApartmentByRoomNumber,
   listApartments,
@@ -76,21 +75,18 @@ export async function removeApartment(idInput) {
     throw new AppError(400, "Căn hộ không hợp lệ.");
   }
 
-  const current = await findApartmentById(id);
-  if (!current) {
+  const result = await deleteEmptyApartmentById(id);
+  if (result.reason === "NOT_FOUND") {
     throw new AppError(404, "Không tìm thấy căn hộ.");
   }
-
-  const residentCount = await countResidentsByApartmentId(id);
-  if (residentCount > 0) {
+  if (result.reason === "HAS_RESIDENTS") {
     throw new AppError(
       400,
       "Không thể xóa căn hộ đang có nhân khẩu. Hãy xóa hoặc chuyển nhân khẩu trước.",
     );
   }
 
-  await deleteApartmentById(id);
-  debug("deleted apartment", current.roomNumber);
-  return current.roomNumber;
+  debug("deleted apartment", result.apartment.roomNumber);
+  return result.apartment.roomNumber;
 }
 

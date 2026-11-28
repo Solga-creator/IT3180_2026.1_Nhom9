@@ -18,7 +18,7 @@ Tài liệu này gom gọn cách triển khai **11 User Stories Sprint 2 (`US-00
 
 ### 1.0. Điều kiện trước khi bắt đầu
 - Sprint 2 hiện là thiết kế/kế hoạch, chưa phải chức năng đã triển khai. Nhóm cần xác nhận quy tắc v1.0: tính trọn tháng theo hộ/giá/diện tích đầu kỳ, bỏ qua căn trống đầu kỳ, không chia phí theo ngày và không chuyển nợ hộ cũ sang hộ mới. Đây là các đề xuất đồ án, chưa phải xác nhận nghiệp vụ của khách hàng.
-- Thực hiện T00 trong kế hoạch: lưu phiên bản code và kết quả chạy hồi quy Sprint 1 làm baseline; phân biệt kết quả cũ với lần chạy mới, không tự đổi tổng số test thành kết quả PASS.
+- Thực hiện T00 trong kế hoạch: smoke test Sprint 1 trên trình duyệt và DB thử riêng, lưu phiên bản code và kết quả chạy hồi quy làm baseline; đối chiếu [báo cáo S1](test-report-s1.md), phân biệt kết quả cũ với lần chạy mới, không tự đổi tổng số test thành kết quả PASS. Khi chốt baseline commit, đưa cả `frontend/tests/residentsRefresh.test.mjs` (hiện chưa được Git theo dõi) vào repo; chạy `node --test tests/*.test.mjs` từ frontend để các thành viên dùng cùng bộ test. Không đánh dấu T00 Done khi chưa có bằng chứng hoặc quyết định nghiệp vụ chưa được xác nhận.
 - Chốt mốc bắt đầu quản lý có đủ dữ liệu hộ, diện tích và giá để backfill migration. Không lấy `created_at` làm bằng chứng ngày chuyển đến, không tự gán lịch sử chưa xác minh; thiếu dữ liệu kỳ cũ phải chặn bằng `422`.
 
 ### 1.1. Tách Database thử nghiệm — Không chạm DB Cloud đang demo
@@ -34,7 +34,7 @@ Tài liệu này gom gọn cách triển khai **11 User Stories Sprint 2 (`US-00
 | `backend/helpers/AppError.js` (`AppError`) | Ném lỗi HTTP chuẩn từ Service (`throw new AppError(400/403/404/409/422, "...")`); Express handler không tự `res.status(...).json(...)` rải rác cho lỗi nghiệp vụ. |
 | `backend/middlewares/auth.js` | Giữ `requireAuth`, kiểm tra `tokenVersion`; mở rộng thêm `requireRoles(...roles)` (không tin `role` hoặc `apartmentId`/`householdId` gửi từ body client). |
 | `backend/strategies/feeCalculationStrategy.js` | Tái sử dụng & mở rộng cho validate đơn giá (`ServiceFeePerSqmStrategy`, `ManagementFeePerSqmStrategy`), phép tính làm tròn tới đồng và phân bổ tiền nộp một phần. |
-| `backend/repositories/residentRepository.js` | Dùng `resolveEffectiveResidencyStatus(...)` khi kiểm tra quyền truy cập của tài khoản `RESIDENT`. |
+| `backend/repositories/residentRepository.js` | Dùng `resolveEffectiveResidencyStatus(...)` với ngày VN khi đã có lịch sử; tái sử dụng `getEffectiveResidencyStatuses(residentIds, referenceDate)` để lấy trạng thái theo lô khi cần kiểm tra tài khoản `RESIDENT`. Helper batch dùng pool; nghiệp vụ trong transaction phải đọc/giải trạng thái bằng cùng connection của transaction. Không suy quyền chỉ từ cột `current_status`. |
 | `frontend/src/services/api.js` (`api`) | Dùng sẵn cho mọi API JSON và tải file `.xlsx` dạng `"blob"`; nhớ giữ nguyên `idempotencyKey` khi user thử lại sau lỗi mất kết nối (`err.status === 0`). |
 
 ### 1.3. Luồng kiến trúc chuẩn cho mỗi tính năng Backend
@@ -67,23 +67,18 @@ api/routes/*.js (requireAuth + requireRoles)
 
 ---
 
-### Phần 1 — Nền tảng Dữ liệu, Lịch sử Hộ/Diện tích, Phân quyền & Audit (`US-001/002/004` mở rộng, `US-018`, `US-019`)
+### Phần 1 — Nền tảng Dữ liệu (6 bảng mới), Bảo toàn S1, Phân quyền & Audit (`US-001/002/004`, `US-018`, `US-019`)
 
 **1. Viết `backend/config/sprint2Migration.js` (gọi từ `migrate()` trong `database.js`):**
-- Tạo **7 bảng mới**: `fee_rate_configs`, `apartment_bills`, `fee_payments`, `voluntary_campaigns`, `voluntary_contributions`, `audit_logs`, `apartment_area_versions`.
-- Mở rộng bảng Sprint 1 theo đúng mục 2 của [sprint2-technical-base.md](./sprint2-technical-base.md):
+- Tạo **6 bảng mới**: `fee_rate_configs`, `apartment_bills`, `fee_payments`, `voluntary_campaigns`, `voluntary_contributions`, `audit_logs` *(đã chốt 28/11 theo DEC-02/03: không tạo `apartment_area_versions`, không thêm `starts_on`/`ends_on`/`open_apartment_id` hay luồng chuyển giao hộ A → B trong v1.0)*.
+- Mở rộng tối thiểu theo mục 2 của [sprint2-technical-base.md](./sprint2-technical-base.md):
   - `users`: Mở rộng `role ENUM('ADMIN', 'BQT', 'ACCOUNTANT', 'TREASURER', 'RESIDENT')`.
-  - `households`: Thêm `starts_on`, `ends_on` (mở/đóng hộ theo khoảng `[starts_on, ends_on)`), thay `UNIQUE(apartment_id)` bằng cột generated `open_apartment_id` + `UNIQUE(open_apartment_id)`.
-  - `residents`: Thêm `joined_household_on` để giới hạn kỳ hóa đơn thành viên mới được xem.
-  - `apartment_bills`: Thêm cột generated `active_apartment_id` + `UNIQUE(period_code, active_apartment_id)` để mỗi căn/kỳ chỉ có tối đa 1 bản `ISSUED`.
+  - `apartment_bills`: Thêm cột generated `active_apartment_id` + `UNIQUE(period_code, active_apartment_id)` để mỗi căn/kỳ chỉ có tối đa 1 bản `ISSUED` *(phục vụ hủy/thay thế hóa đơn giữ theo DEC-05)*.
 - **Ràng buộc khóa ngoại & tính lũy đẳng:** Kiểm tra tồn tại bảng/cột/index qua `information_schema` trước khi `ALTER TABLE` để script chạy lại nhiều lần không lỗi; các FK từ hóa đơn/thanh toán/đóng góp trỏ sang `apartments`, `households`, `users` phải dùng `ON DELETE RESTRICT` (không xóa mất dấu chứng từ tài chính).
-- MySQL DDL có implicit commit: không giả định rollback được toàn bộ migration. Kiểm tra trước/sau từng bước, backup trước khi thay unique cũ và kiểm thử chạy lại sau lỗi giữa chừng trên DB thử.
-- Cập nhật luồng **Xóa ở Sprint 1** (`removeApartment`, `removeResident`, `removeAccount`): chặn xóa bằng `AppError(409/400)` nếu đối tượng đã có hóa đơn, giao dịch hoặc đóng góp tham chiếu (khi đã có chứng từ tài chính thì chỉ đóng hộ/lưu trữ hoặc vô hiệu hóa tài khoản).
+- MySQL DDL có implicit commit: không giả định rollback được toàn bộ migration. Kiểm tra trước/sau từng bước, backup trước khi chạy trên môi trường mới và kiểm thử chạy lại sau lỗi giữa chừng trên DB thử.
+- Cập nhật luồng **Xóa ở Sprint 1** (`removeApartment`, `removeResident`, `removeAccount`): chặn xóa bằng `AppError(409/400)` nếu đối tượng đã có hóa đơn, giao dịch hoặc đóng góp tham chiếu (khi đã có chứng từ tài chính thì chỉ lưu trữ hoặc vô hiệu hóa tài khoản). Với căn hộ, mở rộng kiểm tra chứng từ ngay trong `deleteEmptyApartmentById(...)` ở `apartmentRepository.js`, sau `SELECT ... FOR UPDATE` và trước DELETE, dùng cùng connection/transaction hiện có.
 
-**2. Triển khai Chuyển giao hộ (`POST /api/apartments/:id/household-transfers`):**
-- Khóa dòng căn hộ (`FOR UPDATE`), đóng hộ A (`ends_on = hôm nay`), thu hồi phiên tài khoản cư dân thuộc hộ A (`token_version = token_version + 1`), tạo hộ B mới với Chủ hộ mới (`starts_on = hôm nay`), ghi audit. Không dùng luồng sửa quan hệ thông thường để chuyển giao hộ.
-
-**3. Triển khai `requireRoles(...roles)` (`US-018`) & `auditLogRepository.js` (`US-019`):**
+**2. Triển khai `requireRoles(...roles)` (`US-018`) & `auditLogRepository.js` (`US-019`):**
 - Trên trang `/accounts` (chỉ `ADMIN`): chọn vai trò mới rồi bấm **Lưu** + xác nhận ngắn (`PATCH /api/accounts/:id/role`). Chặn tự hạ quyền `ADMIN` cuối cùng và tăng `token_version = token_version + 1` ngay trong transaction đổi quyền.
 - Tạo `recordAuditInTransaction(connection, { actorId, action, entityType, entityId, beforeData, afterData, reason, summary })`: **bắt buộc dùng chung `connection` của transaction nghiệp vụ** (không mở connection riêng, không `commit` bên trong) để nếu ghi audit lỗi thì toàn bộ giao dịch thu/phát hành tự `rollback`.
 - Tạo `GET /api/audit-logs` (chỉ `ADMIN`), hỗ trợ lọc theo `entity_type` / `action` / thời gian, trả đủ `before_data`, `after_data`, `reason`, tên người thao tác.
