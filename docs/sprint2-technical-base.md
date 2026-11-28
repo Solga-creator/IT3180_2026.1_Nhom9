@@ -2,11 +2,11 @@
 
 > **Trạng thái:** Tài liệu thiết kế kỹ thuật chuẩn bị triển khai Sprint 2 theo tiêu chí **"Ít bước, rõ kết quả, khó thao tác nhầm — Chặt chẽ nghiệp vụ tiền & phân quyền"**. Nhóm SE09 đã hoàn thành **100% Sprint 1 (8/8 US)** và **chưa bắt đầu code chức năng Sprint 2 (0/11 US)**.
 >
-> **Thứ tự ưu tiên triển khai trong Sprint 2:** Chuẩn bị migration lịch sử hộ/diện tích và middleware phân quyền (`US-018`), hàm audit trong transaction (`US-019`) trước; sau đó **Chốt giá (`US-006`) → Xem trước & Sinh hóa đơn (`US-008`) → Giấy báo (`US-009`) → Thu một phần/đủ & Biên lai (`US-010`) → Công nợ lũy kế (`US-012`) → Cư dân tra cứu**; cuối cùng hoàn thiện Quỹ tự nguyện, Lịch sử & Báo cáo. Mỗi API ghi dữ liệu phải tích hợp quyền và audit ngay khi triển khai.
+> **Thứ tự ưu tiên triển khai trong Sprint 2:** Chuẩn bị migration 6 bảng tài chính/audit và middleware phân quyền (`US-018`), hàm audit trong transaction (`US-019`) trước; sau đó **Chốt giá (`US-006`) → Xem trước & Sinh hóa đơn (`US-008`) → Giấy báo (`US-009`) → Thu một phần/đủ & Biên lai (`US-010`) → Công nợ lũy kế (`US-012`) → Cư dân tra cứu**; cuối cùng hoàn thiện Quỹ tự nguyện, Lịch sử & Báo cáo. Mỗi API ghi dữ liệu phải tích hợp quyền và audit ngay khi triển khai.
 >
 > **Bổ sung rà soát ngày 28/11/2026:** Các mục 3.5–3.11 là đề xuất quy ước v1.0 để nhóm thống nhất trước khi code; không phải xác nhận nghiệp vụ của khách hàng hay chức năng đã triển khai. Khi nội dung cũ chưa chi tiết, áp dụng các quy tắc bổ sung này.
 
-Tài liệu phối hợp: [mục lục nhóm](README.md), [API HTTP draft](api-contract-s2.md), [sổ quyết định](sprint2-decisions.md), [fixture dùng chung](sprint2-test-data.md), [báo cáo thực thi S2](test-report-s2.md). Các chi tiết API mới là đề xuất cần chốt; không tự thay đổi trạng thái quyết định khi thêm tài liệu.
+Tài liệu phối hợp: [mục lục nhóm](README.md), [API HTTP draft](api-contract-s2.md), [sổ quyết định](sprint2-decisions.md), [fixture dùng chung](sprint2-test-data.md), [báo cáo thực thi S2](test-report-s2.md). DEC-01–DEC-11 đã được chốt trong sổ quyết định; API là hợp đồng thiết kế, chưa phải chức năng đã triển khai. Thay đổi tiếp theo phải ghi quyết định thay thế và đồng bộ tài liệu.
 
 **Lưu ý ví dụ cũ:** Cặp 90 m²/QL 5.000 đ/m² tại ví dụ phân bổ không đáp ứng mức QL tối thiểu 7.000 của thiết kế. Không dùng cặp đó làm cấu hình giá hợp lệ. Xem hai bộ số hợp lệ ở [fixture](sprint2-test-data.md) và DEC-11 trước khi viết test; việc sửa ví dụ không phải thay đổi khung giá nghiệp vụ.
 
@@ -19,7 +19,7 @@ Toàn bộ 11 User Stories của Sprint 2 (`US-006`..`014`, `US-018`..`019`) k�
 | Thành phần Base từ Sprint 1 | File nguồn Sprint 1 | Vai trò làm Base trong Sprint 2 |
 |---|---|---|
 | **Bảng `apartments`** | `backend/config/database.js` | Cung cấp `apartments.id`, `room_number` và `area` ($\text{m}^2$) để chụp snapshot diện tích và tính bảng thu đầu tháng ($\text{Phí} = \text{area} \times \text{unit\_price}$) ở `US-008`. |
-| **Bảng `households` & `residents`** | `backend/config/database.js` | Mở rộng lịch sử hộ theo mục 3.5; xác định hộ chịu phí tại ngày đầu kỳ, snapshot người chịu phí và kiểm soát quyền cư dân theo hộ, ngày gia nhập và trạng thái cư trú có hiệu lực. |
+| **Bảng `households` & `residents`** | `backend/config/database.js` | Giữ mô hình 1 hộ/căn S1; xác định hộ hiện hữu khi phát hành, snapshot người chịu phí và kiểm soát quyền theo hộ và trạng thái cư trú hiệu lực (DEC-02/03/07). |
 | **Bảng `users`, `token_version` & JWT Middleware** | `backend/middlewares/auth.js` | Xác thực người thực hiện giao dịch (`recorded_by -> users.id`), thu hồi phiên cũ khi đổi quyền/mật khẩu, mở rộng middleware `requireRoles(...)` cho 5 vai trò (`US-018`) và ghi vết trong Nhật ký kiểm toán (`US-019`). |
 | **Singleton MySQL Pool & Transaction ACID** | `backend/config/database.js` | Dùng chung connection pool và cơ chế khóa dòng `SELECT ... FOR UPDATE` trong Transaction khi sinh bảng thu (`US-008`), ghi nhận/hủy thanh toán (`US-010`) và ghi `audit_logs` (`US-019`) nguyên tử. |
 | **Dịch vụ xuất Excel (`exceljs`)** | `backend/services/residentService.js` | Mẫu chuẩn để xây dựng chức năng xuất báo cáo tổng thu theo từng loại phí bắt buộc và theo từng quỹ tự nguyện ra file `.xlsx` (`US-014`). |
@@ -105,7 +105,7 @@ Thiết kế gồm **6 bảng tài chính/kiểm toán**, nối vào 5 bảng Sp
 
 ### 3.1. Quy tắc Phân bổ Thanh toán Một phần theo Từng Loại Phí (`US-010`, `US-014`)
 Khi cư dân nộp số tiền `amount` nhỏ hơn tổng số còn nợ `debt_amount` của hóa đơn:
-- Hệ thống áp dụng quy tắc phân bổ tự động theo thứ tự ưu tiên cố định: **Thu Phí dịch vụ trước, phần còn dư phân bổ vào Phí quản lý**:
+- DEC-04 đã chốt: tiền VND làm tròn từng khoản tới đồng rồi cộng tổng; cho thu một phần/đủ, từ chối amount vượt dư nợ, chưa làm tiền thừa/trả trước. Hệ thống áp dụng quy tắc phân bổ tự động theo thứ tự ưu tiên cố định: **Thu Phí dịch vụ trước, phần còn dư phân bổ vào Phí quản lý**:
   - $\text{service\_remaining} = \text{service\_fee} - \text{service\_paid}$
   - $\text{service\_paid\_amount} = \min(\text{amount}, \text{service\_remaining})$
   - $\text{management\_paid\_amount} = \text{amount} - \text{service\_paid\_amount}$
@@ -132,14 +132,14 @@ Khi cư dân nộp số tiền `amount` nhỏ hơn tổng số còn nợ `debt_a
 
 ### 3.4. Quy tắc Bất biến Chứng từ Lịch sử, Căn hộ Trống, Đổi Chủ hộ & Quyền Xem của Cư dân
 1. **Căn hộ trống khi sinh bảng thu (`US-008`):**
-   - Preview hiển thị đơn giá, diện tích theo lịch sử, hộ chịu phí tại ngày đầu kỳ, các căn trống bị bỏ qua và tổng phải thu. Không suy ra căn trống từ riêng cột `current_status` hiện tại. Chính sách cụ thể tại mục 3.5; phát hành phải kiểm tra lại phiên bản preview theo mục 3.8.
+   - Preview hiển thị đơn giá hiệu lực tại đầu kỳ, diện tích hiện tại, hộ hiện hữu khi phát hành, các căn trống bị bỏ qua và tổng phải thu. Không suy ra căn trống từ riêng cột `current_status` hiện tại. Chính sách cụ thể tại mục 3.5; phát hành phải kiểm tra lại phiên bản preview theo mục 3.8.
 2. **Đổi chủ hộ / diện tích / đơn giá và quản lý nợ cũ:**
    - Mọi hóa đơn đã phát hành giữ nguyên `room_number_snapshot`, `payer_name_snapshot`, `area_snapshot`, `service_unit_price`, `management_unit_price`. Khi in lại Giấy báo phí (`US-009`) hoặc Biên lai (`US-010`) của kỳ cũ, hệ thống hiển thị từ các cột snapshot này nên đổi chủ hộ hoặc đổi diện tích ở hiện tại không làm biến dạng chứng từ kỳ cũ.
    - Công nợ gắn theo căn hộ và hộ gia đình (`household_id`). Trên màn hình công nợ (`US-012`), ngoài số nợ của kỳ đang chọn (`current_period_debt`), hệ thống hiển thị thêm cột **Nợ các kỳ trước (`prior_periods_debt`)** và **Tổng nợ lũy kế (`total_accumulated_debt`)**.
 3. **Phạm vi dữ liệu Cư dân được phép xem (`/api/me/bills`):**
    - Server xác định căn hộ và `household_id` trực tiếp từ JWT (`req.user.id -> users.resident_id`).
-   - Nếu trạng thái cư trú có hiệu lực tại ngày Việt Nam hiện tại là `Chuyển đi` hoặc hộ đã kết thúc, từ chối truy cập (`403 Forbidden`); không chỉ đọc cột trạng thái lưu cũ.
-   - Cư dân mới chuyển đến chỉ nhìn thấy các hóa đơn thuộc `household_id` hiện tại của mình từ kỳ bắt đầu cư trú trở đi; không xem được hóa đơn hay biên lai của hộ cũ hoặc của căn hộ khác (chống IDOR).
+   - Nếu trạng thái cư trú có hiệu lực tại ngày Việt Nam hiện tại là `Chuyển đi` hoặc không còn liên kết nhân khẩu/hộ hợp lệ, từ chối truy cập (`403 Forbidden`); không chỉ đọc cột trạng thái lưu cũ.
+   - Cư dân đang có quyền xem hóa đơn/biên lai thuộc household_id liên kết trong DB; không xem chứng từ hộ/căn khác (chống IDOR). v1.0 không có chuyển giao hộ hay giới hạn lịch sử theo joined_household_on (DEC-03/07).
 4. **Định nghĩa rõ 2 chế độ Báo cáo Excel (`US-014`):**
    - **Báo cáo theo Kỳ hóa đơn (`mode=period&period=YYYY-MM`)**: Tổng hợp phải thu, đã thu (Phí dịch vụ, Phí quản lý) và còn nợ của các hóa đơn thuộc kỳ `YYYY-MM`.
    - **Báo cáo Thực thu trong tháng (`mode=collection_month&month=YYYY-MM`)**: Tổng hợp mọi giao dịch `fee_payments` (`VALID`) và `voluntary_contributions` (`VALID`) có ngày thực thu (`paid_at` / `contributed_at`) nằm trong tháng `YYYY-MM` (bao gồm cả khoản thu trong tháng này để trả nợ cho hóa đơn tháng trước, ghi rõ cột `Kỳ hóa đơn` và `Ngày thực thu`).
@@ -150,7 +150,7 @@ Khi cư dân nộp số tiền `amount` nhỏ hơn tổng số còn nợ `debt_a
 
 **Phạm vi v1.0 đã chốt:** tính trọn tháng cho **kỳ hiện tại hoặc tương lai** theo hộ hiện hữu, diện tích hiện tại (`apartments.area`) và đơn giá hiệu lực tại đầu kỳ, rồi chụp snapshot bất biến lên hóa đơn. Không chia theo số ngày; căn trống bỏ qua cả hai khoản phí; tạm trú/tạm vắng không tự miễn phí khi hộ vẫn còn cư trú.
 
-- **Bỏ sinh bù kỳ quá khứ (DEC-02):** Chặn phát hành mới cho kỳ nhỏ hơn tháng hiện tại theo giờ Việt Nam (`400`/`422`); thiếu đơn giá hiệu lực tại đầu kỳ trả `422`. Không cần bảng `apartment_area_versions`; đổi diện tích hay đổi đơn giá sau khi phát hành không làm đổi snapshot hóa đơn cũ.
+- **Bỏ sinh bù kỳ quá khứ (DEC-02):** Chặn phát hành mới cho kỳ nhỏ hơn tháng hiện tại theo giờ Việt Nam (`422`); thiếu đơn giá hiệu lực tại đầu kỳ trả `422`. Không cần bảng `apartment_area_versions`; đổi diện tích hay đổi đơn giá sau khi phát hành không làm đổi snapshot hóa đơn cũ.
 - **Bỏ chuyển giao hộ A → B tách lịch sử & nợ trong v1.0 (DEC-03):** Giữ mô hình 1 hộ/căn của Sprint 1 (`UNIQUE(apartment_id)`), chỉ hỗ trợ đổi người đại diện trong cùng hộ. Chứng từ đã phát hành vẫn giữ nguyên `payer_name_snapshot` và `room_number_snapshot` khi thông tin hiện tại đổi.
 - **Quyền cư dân (DEC-07):** Suy ra nhân khẩu/hộ trực tiếp từ tài khoản trong DB (`req.user.id -> users.resident_id`), kiểm tra trạng thái hiệu lực theo ngày Việt Nam (`resolveEffectiveResidencyStatus` / `getEffectiveResidencyStatuses`). Cư dân đã `"Chuyển đi"` bị chặn `403` trên mọi API đọc hóa đơn/biên lai/đóng góp; không tin `apartmentId`/`householdId` phía client.
 
@@ -164,7 +164,7 @@ Khi cư dân nộp số tiền `amount` nhỏ hơn tổng số còn nợ `debt_a
 ### 3.7. Thu nhiều kỳ và thao tác hàng ngày
 
 - Phạm vi bắt buộc v1.0: trong một panel căn hộ/hộ, liệt kê các kỳ còn nợ theo thứ tự cũ đến mới, điền sẵn số còn nợ, thu một kỳ rồi chuyển nhanh sang kỳ tiếp theo; giữ căn hộ, hộ chịu phí, hình thức thu và bộ lọc. Mỗi lần xác nhận vẫn tạo một khoản thu cho một hóa đơn.
-- Màn hình ghi rõ **Đang thu kỳ nào / hộ nào / số tiền nào**; không âm thầm trả nợ hộ cũ. Thu tổng một lần tự phân bổ qua nhiều hóa đơn và biên lai gộp nằm ngoài v1.0, tránh hứa UI mà chưa có mô hình giao dịch tương ứng.
+- Màn hình ghi rõ **Đang thu kỳ nào / hộ nào / số tiền nào**; không âm thầm chuyển số tiền sang hóa đơn khác. Thu tổng một lần tự phân bổ qua nhiều hóa đơn và biên lai gộp nằm ngoài v1.0, tránh hứa UI mà chưa có mô hình giao dịch tương ứng.
 - Lưu thành công mới hiện nút in; in bị hủy/lỗi không hoàn tác khoản thu. Nút in lại chỉ đọc. In nhiều giấy báo được chọn trong một lượt qua `GET /api/billing-periods/:period/notices?billIds=...`, chỉ dùng ID thuộc kỳ và quyền được phép, tối đa 100 bản/lượt.
 
 ### 3.8. Gửi lại yêu cầu, xem trước và tính nhất quán
@@ -179,19 +179,19 @@ Khi cư dân nộp số tiền `amount` nhỏ hơn tổng số còn nợ `debt_a
 ### 3.9. Vòng đời quỹ và quyền thao tác
 
 - Tạo/đóng đợt: `ADMIN`, `BQT`, `ACCOUNTANT`. Ghi nhận/hủy đóng góp: `ADMIN`, `BQT`, `TREASURER`. Xem tổng hợp: nhân sự nội bộ; cư dân chỉ thấy thông tin công khai của đợt và đóng góp của hộ mình, không thấy danh sách người nộp của hộ khác.
-- Tạo đợt bằng POST; đóng đợt qua PATCH riêng. Chỉ nhận tiền khi đợt `OPEN` và ngày nghiệp vụ nằm trong khoảng cho phép. Đợt đã đóng vẫn đọc được, không mở lại trong v1.0; hủy sai sót vẫn được phép có lý do/audit.
+- DEC-08 đã chốt: ngày bắt đầu/kết thúc đều được tính theo giờ VN; cho đóng sớm, không mở lại. Tạo đợt bằng POST; đóng đợt qua PATCH riêng. Chỉ nhận tiền khi đợt `OPEN` và ngày nghiệp vụ nằm trong khoảng cho phép. Đợt đã đóng vẫn đọc được, không mở lại trong v1.0; hủy sai sót vẫn được phép có lý do/audit.
 - Đóng góp áp dụng fingerprint/idempotency như phí bắt buộc. Hủy cập nhật tổng quỹ trong cùng transaction, lưu người/thời điểm/lý do; hủy lại không trừ lần hai. Biên nhận có snapshot và mã riêng; không ghi vào nợ phí bắt buộc.
 
 ### 3.10. Bảo vệ và khôi phục dữ liệu
 
 - Trước migration và trước nghiệm thu, sao lưu database bằng công cụ tương thích môi trường MySQL/TiDB đang dùng; không chạy thử restore vào database đang phục vụ demo.
 - Phải phục hồi được một bản sao vào database kiểm thử riêng: đối chiếu số căn/hộ, hóa đơn, giao dịch hợp lệ/hủy, tổng thu và công nợ; kiểm tra đăng nhập/phân quyền sau phục hồi. Ghi người thực hiện, thời điểm, nguồn backup và kết quả; không đưa mật khẩu hoặc dữ liệu nhạy cảm vào log minh chứng.
-- Đề xuất mục tiêu vận hành v1.0 để nhóm xác nhận: backup mỗi ngày và trước migration, mất tối đa 24 giờ dữ liệu, khôi phục trong 2 giờ. Tự động backup chỉ được đánh dấu Done khi có cấu hình và một lần phục hồi thật làm bằng chứng.
+- DEC-10 đã chốt: backup trước migration và trước nghiệm thu; phục hồi thử ít nhất một lần vào DB riêng, đối chiếu bản ghi, tổng tiền và quyền. Ghi thời gian thực tế; chưa triển khai backup tự động, chưa cam kết RPO 24 giờ hay RTO 2 giờ.
 
 ### 3.11. Điều kiện nghiệm thu kết hợp Sprint 1–2
 
-- E2E với database thật, dữ liệu thử riêng: tạo căn/hộ → phát hành hai kỳ → thu một phần → trả nợ kỳ trước → hủy thu nhầm → thay hộ → đối chiếu chứng từ, quyền cư dân và Excel. Không dùng kết quả mock làm bằng chứng đã kiểm tra khóa dòng thực tế.
-- Mục tiêu hiệu năng đề xuất: 500 căn, 2.000 nhân khẩu, 24 kỳ, 20.000 khoản thu, 5 phiên nội bộ đồng thời; sau warm-up, ít nhất 100 lượt tra cứu/thu mẫu, p95 phản hồi API dưới 2 giây. Ghi cấu hình máy, vị trí database và điều kiện mạng; không tính thời gian người dùng nhập hoặc máy in. Xuất Excel và sinh toàn kỳ đo riêng, mục tiêu 10 giây cho bộ dữ liệu này.
+- E2E với database thật, dữ liệu thử riêng: tạo căn/hộ → phát hành kỳ hiện tại tại clock thử, tiến clock sang kỳ kế tiếp và phát hành → thu một phần/trả nợ kỳ trước → hủy thu nhầm → đổi người đại diện cùng hộ → đối chiếu snapshot, quyền cư dân và Excel. Không dùng kết quả mock làm bằng chứng đã kiểm tra khóa dòng thực tế.
+- Mục tiêu DEC-10 đã chốt: 100 căn, 400 nhân khẩu, 6 kỳ, 1.000 khoản thu, 3 phiên nội bộ đồng thời; sau warm-up, ít nhất 100 lượt tra cứu/thu mẫu, p95 phản hồi API dưới 2 giây. Bắt buộc thử hai người cùng thu một hóa đơn; dữ liệu các kỳ được dựng bằng clock thử hợp lệ, không mở API sinh bù quá khứ. Ghi cấu hình máy, vị trí database và điều kiện mạng; không tính thời gian người dùng nhập hoặc máy in. Xuất Excel và sinh toàn kỳ đo riêng, mục tiêu 10 giây cho bộ dữ liệu này.
 - Kiểm tra in A4/A5 bằng print preview/PDF, giữ số 0 đầu của phòng, dấu tiếng Việt, tổng tiền, phân trang và trạng thái hủy. Kiểm tra viewport 390px và desktop, thao tác bàn phím, nhãn input, focus hộp thoại, nút Hủy/Escape và không gửi hai lần.
 - Definition of Done: tiêu chí US và ca kiểm thử bổ sung đạt, hồi quy Sprint 1 đạt, migration/backup/restore có bằng chứng, ma trận quyền khớp API/menu, không còn lỗi nghiêm trọng về tiền hoặc lộ dữ liệu, cập nhật báo cáo kết quả thực thi. Các số liệu/mốc trên là mục tiêu, chưa phải kết quả đo.
 
@@ -212,7 +212,7 @@ Khi cư dân nộp số tiền `amount` nhỏ hơn tổng số còn nợ `debt_a
 
 ## 5. Ma trận Phân quyền Chi tiết (`US-018`)
 
-Bảng `users.role` được mở rộng thành `ENUM('ADMIN', 'BQT', 'ACCOUNTANT', 'TREASURER', 'RESIDENT')`. Middleware `requireRoles(...allowedRoles)` kiểm tra chặt chẽ tại tầng API:
+DEC-06 đã chốt ma trận bên dưới; không triển khai màn hình tự cấu hình quyền tùy ý trong v1.0. Bảng `users.role` được mở rộng thành `ENUM('ADMIN', 'BQT', 'ACCOUNTANT', 'TREASURER', 'RESIDENT')`. Middleware `requireRoles(...allowedRoles)` kiểm tra chặt chẽ tại tầng API:
 
 | Nhóm hành động / API Endpoint | `ADMIN` | `BQT` | `ACCOUNTANT` (Kế toán) | `TREASURER` (Thủ quỹ) | `RESIDENT` (Cư dân) |
 |---|:---:|:---:|:---:|:---:|:---:|
@@ -226,7 +226,7 @@ Bảng `users.role` được mở rộng thành `ENUM('ADMIN', 'BQT', 'ACCOUNTAN
 | Tạo/đóng đợt vận động (`US-007`) | **Có** | **Có** | **Có** | Không | Không |
 | Ghi nhận/hủy ủng hộ quỹ (`US-011`) | **Có** | **Có** | Không | **Có** | Không |
 | Hủy/thay thế hóa đơn sai (`US-008`) | **Có** | Không | **Có** | Không | Không |
-| Chuyển giao hộ gia đình (`US-002`, `US-004`) | **Có** | **Có** | Không | Không | Không |
+
 | Xem thông tin hộ, hóa đơn & biên lai của chính căn hộ mình (`/api/me/*`) | Không | Không | Không | Không | **Có** *(khi chưa Chuyển đi)* |
 
 - **Quy tắc đổi vai trò an toàn (`US-018`):** Trên trang `/accounts`, Admin chọn vai trò mới trong dropdown rồi bấm nút **`Lưu`** (kèm xác nhận ngắn: *"Đổi vai trò tài khoản ketoan01 từ BQT sang ACCOUNTANT?"*). Hệ thống chặn tự hạ quyền của `ADMIN` cuối cùng và tự động tăng `token_version = token_version + 1` của tài khoản được đổi quyền.
@@ -264,7 +264,7 @@ Bảng `users.role` được mở rộng thành `ENUM('ADMIN', 'BQT', 'ACCOUNTAN
 | 1 | `GET /api/fees/rates` | `US-006` | Nhân sự nội bộ | Lấy đơn giá phí dịch vụ & quản lý hiện hành kèm lịch sử cấu hình. |
 | 2 | `PUT /api/fees/rates` | `US-006` | `ADMIN`, `ACCOUNTANT` | Chốt đơn giá mới kèm `effectiveFrom` (DV $2.500\text{–}16.500$, QL $\ge 7.000$), ghi `audit_logs` trong cùng transaction. |
 | 3 | `POST /api/billing-periods/preview` | `US-008` | `ADMIN`, `ACCOUNTANT` | Nhận `period`, tùy chọn `replacesBillId` cho sửa sai một hóa đơn; trả danh sách đủ điều kiện/bỏ qua, giá/tổng và `previewToken`. Token thay thế gắn đúng hóa đơn; không dùng để phát hành toàn kỳ. |
-| 4 | `POST /api/billing-periods/generate` | `US-008` | `ADMIN`, `ACCOUNTANT` | Nhận `period`, `previewToken`; kiểm tra phiên bản/đủ dữ liệu lịch sử, phát hành atomic theo snapshot đầu kỳ; chặn trùng hoặc preview lỗi thời `409`. |
+| 4 | `POST /api/billing-periods/generate` | `US-008` | `ADMIN`, `ACCOUNTANT` | Nhận `period`, `previewToken`; kiểm tra phiên bản/đủ dữ liệu phát hành, chặn kỳ quá khứ và phát hành atomic theo snapshot; chặn trùng hoặc preview lỗi thời `409`. |
 | 5 | `GET /api/billing-periods/:period/bills` | `US-008`, `US-012` | Nhân sự nội bộ | Xem danh sách hóa đơn trong kỳ kèm nợ kỳ trước (`?unpaidOnly=true&search=...`). |
 | 6 | `GET /api/bills/:billId/notice` | `US-009` | Nhân sự nội bộ | Lấy dữ liệu Giấy báo phí từ snapshot lịch sử của hóa đơn để hiển thị/in. |
 | 7 | `POST /api/payments` | `US-010` | `ADMIN`, `TREASURER` | Ghi nhận thu phí (khóa `FOR UPDATE`, kiểm tra `idempotencyKey`, phân bổ DV/QL, sinh mã biên lai, ghi `audit_logs` cùng transaction). |

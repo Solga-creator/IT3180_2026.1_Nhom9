@@ -1,6 +1,6 @@
 # Hợp đồng HTTP Sprint 2 — Draft v0.1
 
-Cập nhật 28/11/2026. **Thiết kế đề xuất, chưa phải API đang chạy.** Nhóm cần chốt tên trường, query và giới hạn ở task liên quan trước khi frontend/backend tích hợp (DEC-09). Không coi ví dụ JSON là dữ liệu đã trả từ server.
+Cập nhật 28/11/2026. **Hợp đồng thiết kế đã chốt theo DEC-09, chưa phải API đang chạy.** FE/BE dùng chung tên trường, query, mã lỗi và phân trang bên dưới; mọi thay đổi cần cập nhật đồng bộ trước tích hợp. Không coi ví dụ JSON là dữ liệu đã trả từ server.
 
 Nguồn nghiệp vụ/schema/quyền: [thiết kế kỹ thuật](sprint2-technical-base.md). Luồng xử lý transaction, replay, token: [hướng dẫn S2](huong-dan-lam-sprint2.md). HTTP dùng camelCase, DB dùng snake_case và ánh xạ ở repository; không yêu cầu đổi response S1 trong đợt này.
 
@@ -12,7 +12,7 @@ Nguồn nghiệp vụ/schema/quyền: [thiết kế kỹ thuật](sprint2-techni
 - Tiền JSON là số nguyên đồng không âm, khoản thu phải dương; trong giới hạn safe integer và schema DB. Diện tích là số m² dương tối đa 2 chữ số thập phân; phép tính dùng decimal/số nguyên chính xác và làm tròn từng khoản.
 - Thành công theo kiểu hiện có: `{ "success": true, ...trườngNghiệpVụ }`; không thêm tầng `data` chỉ ở một phía. Lỗi tối thiểu `{ "success": false, "message": "..." }`, tương thích helper hiện tại. UI xử lý theo HTTP status, không parse câu lỗi.
 - `201` khi tạo chứng từ mới; `200` cho đọc/cập nhật/replay. PUT đơn giá tạo phiên bản mới và trả `200 { success, rateConfig }` theo quy ước endpoint này.
-- `400` input sai; `401` thiếu/hết phiên; `403` không đủ quyền; `404` không tìm thấy hoặc chứng từ ngoài phạm vi cư dân; `409` xung đột/key khác payload/preview không hợp lệ; `422` thiếu lịch sử; `500` lỗi nội bộ được che chi tiết.
+- `400` input sai; `401` thiếu/hết phiên; `403` không đủ quyền; `404` không tìm thấy hoặc chứng từ ngoài phạm vi cư dân; `409` xung đột/key khác payload/preview không hợp lệ; `422` không đủ điều kiện phát hành (kỳ quá khứ/thiếu đơn giá hiệu lực); `500` lỗi nội bộ được che chi tiết.
 - Không nhận `actorId`, `recordedBy` hoặc vai trò trong body làm căn cứ quyền. Nội bộ = ADMIN/BQT/ACCOUNTANT/TREASURER, theo ma trận kỹ thuật; cư dân chỉ qua các API cho phép.
 - Giới hạn chuỗi draft: tên người nộp 2–120 ký tự, note/reason tối đa 255 ký tự, reason bắt buộc có nội dung sau trim; key UUID v4 tối đa 64 ký tự. Bộ mã `fundCode` cần chốt ở T08, không tự suy ra từ nhãn tiếng Việt.
 
@@ -57,16 +57,16 @@ Ví dụ này dùng đơn giá quản lý hợp lệ 7.000 đ/m²; ví dụ 810.
 
 ## 3. Query và danh sách
 
-Đề xuất `page=1`, `pageSize=20`, tối đa 100; số âm, không nguyên hoặc vượt giới hạn trả `400`. Sắp xếp ổn định do server quy định (bill theo phòng rồi ID; lịch sử theo thời điểm giảm dần rồi ID). Không nhận biểu thức SQL sort từ client.
+Đã chốt `page=1`, `pageSize=20`, tối đa 100; số âm, không nguyên hoặc vượt giới hạn trả `400`. Sắp xếp ổn định do server quy định (bill theo phòng rồi ID; lịch sử theo thời điểm giảm dần rồi ID). Không nhận biểu thức SQL sort từ client.
 
 Danh sách trả `{ success, items, pagination: { page, pageSize, totalItems, totalPages } }`; không có kết quả thì `items: []`, totalItems/totalPages bằng 0. Endpoint có tổng tiền thêm `totals`, tính trên toàn bộ tập lọc trước phân trang.
 
 - Bảng thu: `apartmentId`, `householdId`, `search` (trim, tối đa 120), `status=UNPAID|PARTIAL|PAID`, `unpaidOnly=true|false`. Nếu kết hợp `unpaidOnly=true` và `status=PAID`, trả `400`.
 - `period` trong path quyết định kỳ; không gửi thêm query kỳ khác. ID căn/hộ lọc chính xác; hộ phải thuộc căn nếu cùng gửi.
 - Bảng thu mặc định chỉ ISSUED. Lịch sử vẫn trả bản hủy với trạng thái rõ ràng. API quản trị đọc bản hủy theo ID không bị mất chứng từ.
-- `totals`: `totalDue`, `totalPaid`, `currentPeriodDebt`, `priorPeriodsDebt`, `totalAccumulatedDebt`. Ba trường đầu tính trên hóa đơn kỳ đang xem khớp filter. Prior là nợ trước kỳ của các hộ xuất hiện trong tập kết quả kỳ đó trước phân trang; không cộng lại ở mỗi dòng hay đưa vào totalDue kỳ này. Panel theo căn phải liệt kê cả hộ cũ không có bill kỳ hiện tại bằng truy vấn lịch sử riêng, không suy ra tổng toàn căn từ prior của bảng kỳ.
+- `totals`: `totalDue`, `totalPaid`, `currentPeriodDebt`, `priorPeriodsDebt`, `totalAccumulatedDebt`. Ba trường đầu tính trên hóa đơn kỳ đang xem khớp filter. Prior là nợ trước kỳ của các hộ xuất hiện trong tập kết quả kỳ đó trước phân trang; không cộng lại ở mỗi dòng hay đưa vào totalDue kỳ này. Panel theo căn truy vấn các kỳ của hộ gắn với căn; không tách hộ cũ/mới theo DEC-03. Không cộng prior lặp lại cho từng dòng.
 - Lịch sử căn nhận `householdId`, `period` (chỉ lọc phần hóa đơn), `status=VALID|VOIDED`, page/pageSize; phần đóng góp không bị gán một kỳ hóa đơn giả. UI ghi rõ hai nhóm kết quả.
-- Audit giữ query `entity_type`, `action`, `from`, `to`, page/pageSize; `from/to` là timestamp ISO, khoảng `[from,to)`. Trả `400` nếu khoảng đảo ngược.
+- Audit dùng query `entityType`, `action`, `from`, `to`, page/pageSize; `from/to` là timestamp ISO, khoảng `[from,to)`. Trả `400` nếu khoảng đảo ngược.
 
 ## 4. Endpoint và body/response tối thiểu
 
@@ -103,7 +103,7 @@ Trường body không có dấu `?` là bắt buộc. Tên object response dư�
 
 `RateConfig`: id, serviceUnitPrice, managementUnitPrice, effectiveFrom, note. *(Endpoint `POST /apartments/:id/household-transfers` không thuộc phạm vi v1.0 theo DEC-03.)*
 
-`eligible` preview chứa `apartmentId, householdId, roomNumber, payerName, area, serviceUnitPrice, managementUnitPrice, serviceFee, managementFee, totalDue`; `skipped` chứa căn trống và lý do bỏ qua. Tổng preview gồm `eligibleCount, skippedCount, totalDue`. Chặn phát hành mới kỳ quá khứ theo DEC-02 (`400`/`422`) hoặc thiếu đơn giá hiệu lực (`422`). Preview thay thế (`replacesBillId`) chỉ có một hóa đơn đích; token ràng buộc actor/kỳ/mục đích/ID như hướng dẫn S2 *(giữ theo DEC-05)*.
+`eligible` preview chứa `apartmentId, householdId, roomNumber, payerName, area, serviceUnitPrice, managementUnitPrice, serviceFee, managementFee, totalDue`; `skipped` chứa căn trống và lý do bỏ qua. Tổng preview gồm `eligibleCount, skippedCount, totalDue`. Chặn phát hành mới kỳ quá khứ theo DEC-02 (`422`) hoặc thiếu đơn giá hiệu lực (`422`). Preview thay thế (`replacesBillId`) chỉ có một hóa đơn đích; token ràng buộc actor/kỳ/mục đích/ID như hướng dẫn S2 *(giữ theo DEC-05)*.
 
 ## 5. Ví dụ thu tiền và lỗi
 
@@ -131,9 +131,9 @@ Lỗi trên trả 409. Không expose SQL, fingerprint, token hay dữ liệu h�
 - Report nhận `mode=period&period=YYYY-MM` hoặc `mode=collection_month&month=YYYY-MM`, không trộn hai chế độ. Các bộ lọc áp dụng được: apartmentId, householdId, search, trạng thái thanh toán hóa đơn. Khi lọc trạng thái bill, phần quỹ không có trạng thái này phải ở sheet riêng và ghi rõ phạm vi; không gán trạng thái bill cho đóng góp. Tổng quỹ không cộng vào nợ bắt buộc.
 - Period mode báo cáo theo kỳ bill; phần quỹ theo ngày đóng góp trong tháng cùng tên, ghi tiêu đề rõ. Collection-month mode dùng thời điểm thực thu VN cho cả hai loại khoản thu. Chỉ cộng VALID; loại bill CANCELLED khỏi số liệu phí hợp lệ. Lịch sử hủy không bị xóa.
 - Trả MIME `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`, Content-Disposition attachment, Cache-Control no-store. Lỗi trả JSON với HTTP lỗi; frontend gọi helper ở chế độ blob và xử lý lỗi như hiện có.
-- API cư dân suy hộ từ user DB sau xác thực, kiểm trạng thái cư trú và ngày gia nhập; không tin ID căn/hộ client. Khoản đóng góp không có kỳ hóa đơn: giới hạn theo tháng contributedAt VN so với tháng gia nhập, cần nhóm chốt DEC-07 trước triển khai.
+- API cư dân suy hộ từ user DB sau xác thực, kiểm trạng thái cư trú hiệu lực và quyền với từng chứng từ; không tin ID căn/hộ client. DEC-03/07 không triển khai chuyển hộ hoặc giới hạn joined_household_on trong v1.0; cư dân đang hợp lệ xem chứng từ chính hộ, không xem hộ khác.
 - Thiết kế hiện chưa có endpoint giấy báo riêng cho cư dân. `/me/bills` trả đủ snapshot tối thiểu của Bill để hiển thị/in giấy báo của hộ được phép; không gọi API notice nội bộ bằng token RESIDENT. Nếu cần endpoint riêng, bổ sung API/quyền/test cùng PR trước khi nối UI.
 
-## 7. Chốt hợp đồng khi nhận task
+## 7. Áp dụng hợp đồng đã chốt
 
-Người backend và frontend/tester review body/response mẫu, đơn vị tiền, bộ lọc, lỗi và quyền; ghi quyết định DEC-09. T08 cần chốt bộ fundCode; T06/T07 cần xác nhận phạm vi totals và sheet báo cáo; T09 xác nhận giới hạn lịch sử đóng góp. Fixture trong tài liệu chỉ là đặc tả; chưa có server mock/Postman/OpenAPI được tạo bởi file này. Mọi thay đổi đã chốt cần sửa các ví dụ và test tương ứng, không đổi một phía.
+DEC-09 đã chốt: dùng camelCase cho trường JSON/query mới, tiền là số đồng nguyên (không chuỗi đã định dạng), ngày YYYY-MM-DD, kỳ YYYY-MM và timestamp có múi giờ. Giữ envelope response tương thích S1; endpoint danh sách dùng items/pagination và totals toàn tập lọc. Không thêm framework phân trang, server mock hay client generator trong v1.0. Backend và frontend/tester đối chiếu body/response mẫu, bộ lọc, lỗi và quyền khi nhận task. T08 cần chốt bộ fundCode; T06/T07 cần xác nhận phạm vi totals và sheet báo cáo; T09 kiểm quyền chứng từ của hộ theo DEC-07, không thêm giới hạn ngày gia nhập. Fixture trong tài liệu chỉ là đặc tả; chưa có server mock/Postman/OpenAPI được tạo bởi file này. Mọi thay đổi đã chốt cần sửa các ví dụ và test tương ứng, không đổi một phía.

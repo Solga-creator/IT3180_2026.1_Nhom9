@@ -7,7 +7,7 @@
 ## 1. Phạm vi & Mục tiêu Kiểm thử Sprint 2 (11 User Stories)
 - **Phạm vi chức năng:** Kiểm thử toàn bộ phân hệ thu phí bắt buộc (`US-006`, `US-008`, `US-009`, `US-010`, `US-012`), quỹ đóng góp tự nguyện (`US-007`, `US-011`), lịch sử & báo cáo Excel (`US-013`, `US-014`), phân quyền 5 vai trò & nhật ký kiểm toán (`US-018`, `US-019`), và cổng tra cứu hóa đơn/biên lai của Cư dân (`/api/me/bills`).
 - **Kiểm thử độ chặt chẽ nghiệp vụ tiền & phân quyền:** Kiểm thử phân bổ thanh toán một phần theo từng loại phí, chống thu trùng khi bấm đúp (`idempotency_key`), chống xung đột khi 2 người thu cùng lúc (`SELECT ... FOR UPDATE`), hủy giao dịch thu nhầm kèm lý do (`VOIDED`), tách biệt in lại biên lai với thu mới, bất biến snapshot chứng từ cũ, ghi `audit_logs` nguyên tử trong cùng transaction và chống IDOR giữa các căn hộ.
-- **Hồi quy (Regression):** Kiểm tra toàn bộ test Sprint 1 sau khi thêm 7 bảng và mở rộng vòng đời hộ; bổ sung test cho xóa dữ liệu có chứng từ, chuyển giao hộ và phân quyền mới. Danh mục API tại `sprint2-technical-base.md` là hợp đồng dự kiến, chưa phải API đã triển khai.
+- **Hồi quy (Regression):** Kiểm tra toàn bộ test Sprint 1 sau khi thêm 6 bảng tài chính/audit; bổ sung test xóa dữ liệu có chứng từ và phân quyền mới. Không nghiệm thu chuyển giao hộ hay lịch sử diện tích quá khứ theo DEC-02/03. Danh mục API tại `sprint2-technical-base.md` là hợp đồng dự kiến, chưa phải API đã triển khai.
 
 ---
 
@@ -20,7 +20,7 @@
 | `FTC-S2-03` | `US-006` | Từ chối phí quản lý dưới $7.000\text{ đ/m}^2$ | Quản lý `6.500` | HTTP 400, yêu cầu $\ge 7.000\text{ đ/m}^2$ | Planned |
 | `FTC-S2-04` | `US-007` | Tạo đợt đóng góp tự nguyện hợp lệ | Tên *"Quỹ khuyến học 2026"*, `01/11`–`30/11` | HTTP 201, tách biệt hoàn toàn khỏi công nợ phí bắt buộc | Planned |
 | `FTC-S2-05` | `US-007` | Từ chối đợt đóng góp có ngày kết thúc trước ngày bắt đầu | `start_date > end_date` | HTTP 400, báo lỗi khoảng ngày | Planned |
-| `FTC-S2-06` | `US-008` | Preview và sinh bảng thu theo tình trạng đầu kỳ | Fixture riêng: kỳ `2026-11`, căn `050` 60 m² có hộ ở đầu kỳ; căn `301` không có hộ đầu kỳ (không giả định seed Sprint 1 là căn trống) | Preview bỏ qua `301`, phát hành `050`: DV 360.000, QL 450.000, tổng 810.000; dùng lịch sử đầu kỳ | Planned |
+| `FTC-S2-06` | `US-008` | Preview và sinh bảng thu theo hộ hiện hữu khi phát hành | Fixture riêng: kỳ `2026-11`, căn `050` 60 m² có hộ đang cư trú; căn `301` không có hộ đang cư trú khi phát hành (không giả định seed Sprint 1 là căn trống) | Preview bỏ qua `301`, phát hành `050`: DV 360.000, QL 450.000, tổng 810.000; dùng hộ hiện hữu/diện tích hiện tại khi phát hành và giá hiệu lực đầu kỳ | Planned |
 | `FTC-S2-07` | `US-008` | Chặn sinh trùng bảng thu cho kỳ đã tạo | Gọi sinh kỳ `2026-11` lần 2 | HTTP 409, không tạo hóa đơn trùng lặp (`UNIQUE(period_code, apartment_id)`) | Planned |
 | `FTC-S2-08` | `US-009` | Lấy dữ liệu & xem bản in Giấy báo phí theo căn | `billId` của căn `050` | Hiển thị đúng snapshot số phòng `050`, chủ hộ, diện tích, chi tiết phí và nợ kỳ trước | Planned |
 | `FTC-S2-09` | `US-010` | Ghi nhận nộp đủ phí bắt buộc bằng Tiền mặt | `amount = 810.000`, `method = CASH`, `idempotencyKey = uuid-1` | Lưu giao dịch (`service_paid_amount = 360.000`, `management_paid_amount = 450.000`), `status = PAID`, trả mã biên lai | Planned |
@@ -49,13 +49,13 @@ Các quy ước v1.0 dùng cho dữ liệu mong đợi nằm tại mục 3.5–3
 | Mã TC | US / loại | Tình huống và dữ liệu | Kết quả mong đợi | Trạng thái |
 |---|---|---|---|---|
 | `FTC-S2-27` | `US-002`, `004`, `012` | Chuyển giao hộ A → B tách lịch sử & nợ | *Ngoài phạm vi v1.0 theo DEC-03 (28/11/2026)* | Out of Scope (v1.0) |
-| `FTC-S2-28` | `US-008` | Chặn phát hành mới cho kỳ quá khứ theo giờ VN (`period < tháng hiện tại`) | Trả `400`/`422`, không tạo hóa đơn bù kỳ cũ *(theo DEC-02)* | Planned |
+| `FTC-S2-28` | `US-008` | Chặn phát hành mới cho kỳ quá khứ theo giờ VN (`period < tháng hiện tại`) | Trả `422`, không tạo hóa đơn bù kỳ cũ *(theo DEC-02)* | Planned |
 | `FTC-S2-29` | `US-004`, `008` | Hộ có thành viên tạm vắng; căn khác trống (không có hộ) | Không miễn phí chỉ vì tạm vắng; căn trống được bỏ qua | Planned |
 | `FTC-S2-30` | `US-001`, `006`, `008` | Sinh bù kỳ cũ bằng bảng lịch sử diện tích quá khứ | *Ngoài phạm vi v1.0 theo DEC-02 (28/11/2026); tính bất biến kỳ đã phát hành kiểm ở `FTC-S2-23`* | Out of Scope (v1.0) |
 | `FTC-S2-31` | `US-008` | Hủy/thay hóa đơn sai chưa thu | Giữ bản CANCELLED, tạo revision mới liên kết bản cũ; chỉ một bản ISSUED; tổng nợ không cộng đôi | Planned |
 | `FTC-S2-32` | `US-008`, `010` | Thay hóa đơn đang còn khoản thu VALID | 409, không hủy ngầm khoản thu; xử lý thu nhầm có lý do trước | Planned |
 | `FTC-S2-33` | `US-001`, `002` | Xóa căn/hộ/tài khoản đã có chứng từ | Chặn xóa hoặc vô hiệu hóa/lưu trữ theo loại dữ liệu; chứng từ và người thu không mất | Planned |
-| `FTC-S2-34` | `US-010`, `012` | Thu hai kỳ liên tiếp trong panel; chọn hộ cũ có nợ | Giữ căn/hộ/hình thức, hiển thị rõ kỳ và số tiền; không tự trả nợ hộ cũ; mỗi xác nhận có biên lai riêng | Planned |
+| `FTC-S2-34` | `US-010`, `012` | Thu hai kỳ liên tiếp của cùng hộ trong panel | Giữ căn/hộ/hình thức, hiển thị rõ kỳ và số tiền; không tự chuyển tiền sang hóa đơn khác; mỗi xác nhận có biên lai riêng | Planned |
 | `FTC-S2-35` | `US-010` | Lưu tiền thành công rồi hủy/lỗi in; bấm in lại | Giao dịch không mất, không phát sinh khoản thu mới | Planned |
 | `FTC-S2-36` | `US-010`, `011` | Cùng key nhưng khác amount/bill/method; hai request cùng key đồng thời | Khác payload trả 409; cùng payload tạo đúng một giao dịch và trả cùng biên lai | Planned |
 | `FTC-S2-37` | `US-010` | Server commit rồi rớt phản hồi, tải lại và gửi lại | Giữ key, nhận giao dịch cũ dù hóa đơn đã đủ; không báo nhầm là khoản thu mới | Planned |
@@ -63,18 +63,20 @@ Các quy ước v1.0 dùng cho dữ liệu mong đợi nằm tại mục 3.5–3
 | `FTC-S2-39` | `US-008`, `019` | Phát hành nhiều căn, lỗi giữa batch; sau đó hai request phát hành đồng thời | Rollback cả batch khi lỗi; chỉ một lần phát hành thành công, không kỳ nửa vời/trùng | Planned |
 | `FTC-S2-40` | `US-007`, `011` | Đóng đợt rồi thu thêm; hủy đóng góp cũ hai lần | Chặn thu mới; hủy đúng một lần, tổng quỹ đúng, biên nhận ĐÃ HỦY; không ảnh hưởng nợ bắt buộc | Planned |
 | `FTC-S2-41` | `US-018` | Kế toán tạo/đóng đợt nhưng thử ghi đóng góp; thủ quỹ làm ngược lại; BQT thao tác theo bảng quyền | API/menu khớp ma trận: kế toán không ghi tiền, thủ quỹ không quản lý đợt, BQT được cả hai trong phạm vi quỹ | Planned |
-| `FTC-S2-42` | `US-009`, `013` | Cư dân hộ mới/nhân khẩu mới xem hóa đơn trước ngày gia nhập hoặc biên nhận hộ khác | 403/404, không lộ dữ liệu; BQT vẫn xem được lịch sử hộ cũ | Planned |
+| `FTC-S2-42` | `US-009`, `013` | Cư dân đang cư trú xem chứng từ hộ mình; thử chứng từ hộ khác hoặc truy cập sau Chuyển đi | Chính hộ được xem; sai hộ/đã chuyển đi bị chặn 403/404; không thêm giới hạn ngày gia nhập | Planned |
 | `FTC-S2-43` | `US-008`, `014` | Mốc 00:00 Việt Nam, cuối tháng/năm; số tiền có phần lẻ sau nhân diện tích | Ngày/kỳ và tháng thực thu đúng; làm tròn từng khoản tới đồng, tổng không lệch | Planned |
 | `FTC-S2-44` | `US-012`, `014` | Áp dụng cùng bộ lọc ở bảng/thẻ/Excel; có hóa đơn và giao dịch hủy | Số liệu khớp; loại bản hủy khỏi tổng hợp, giữ trong lịch sử | Planned |
 | `FTC-S2-45` | `US-009` | In 10 giấy báo; chèn ID sai kỳ; xem biên lai VOIDED | Đúng snapshot và phân trang A4/A5; chặn ID sai; chứng từ hủy có dấu rõ | Planned |
+
+Các ca FTC-S2-27 và FTC-S2-30 giữ ID để truy vết nhưng ngoài phạm vi: còn **43 ca chức năng trong phạm vi + 2 ca ngoài phạm vi**, chưa ca nào thực thi. DEC-04/06/08/09/10/11 đã chốt; các trạng thái Planned không phải Pass.
 
 ## 4. Nghiệm thu tích hợp và vận hành
 
 | Mã TC | Phép kiểm tra | Bằng chứng yêu cầu | Trạng thái |
 |---|---|---|---|
-| `E2E-S2-01` | Database thật: tạo căn/hộ → hai kỳ thu → thu một phần → trả nợ cũ → hủy thu nhầm → chuyển hộ → cư dân/BQT tra cứu → Excel | Fixture riêng, tổng tiền đối chiếu trước/sau, request/response che dữ liệu nhạy cảm, ảnh UI và file Excel | Planned |
-| `OPS-S2-01` | Backup và restore sang database kiểm thử riêng | Đối chiếu số bản ghi, tổng phải thu/thu/nợ, quyền đăng nhập; ghi thời gian khôi phục, không chạy restore vào DB demo | Planned |
-| `PERF-S2-01` | 500 căn, 2.000 nhân khẩu, 24 kỳ, 20.000 khoản thu, 5 phiên; ít nhất 100 request sau warm-up | p95 tra cứu/thu dưới 2 giây; sinh kỳ/Excel dưới 10 giây; ghi máy, mạng, DB và dữ liệu đo | Planned |
+| `E2E-S2-01` | Database thật: tạo căn/hộ → phát hành hai kỳ bằng clock thử hợp lệ (không sinh bù quá khứ) → thu một phần → trả nợ cũ → hủy thu nhầm → đổi đại diện cùng hộ → cư dân/BQT tra cứu → Excel | Fixture riêng, tổng tiền đối chiếu trước/sau, request/response che dữ liệu nhạy cảm, ảnh UI và file Excel | Planned |
+| `OPS-S2-01` | Backup trước migration/nghiệm thu và restore ít nhất một lần sang DB thử riêng; chưa yêu cầu backup tự động/RPO/RTO | Đối chiếu số bản ghi, tổng phải thu/thu/nợ, quyền đăng nhập; ghi thời gian khôi phục, không chạy restore vào DB demo | Planned |
+| `PERF-S2-01` | 100 căn, 400 nhân khẩu, 6 kỳ, 1.000 khoản thu, 3 phiên; ít nhất 100 request sau warm-up | p95 tra cứu/thu dưới 2 giây; sinh kỳ/Excel dưới 10 giây; ghi máy, mạng, DB và dữ liệu đo; kiểm thêm hai người cùng thu một hóa đơn, không thu vượt | Planned |
 | `UX-S2-01` | Desktop và 390px, bàn phím, focus modal/Escape, mất mạng khi thu, giữ bộ lọc/vị trí sau lưu | Kịch bản thao tác, số bước và lỗi quan sát; không gửi trùng; có cách khôi phục/in lại | Planned |
 
 Không dùng số lượng ca trong tài liệu làm số test đã chạy. Chỉ chuyển trạng thái sang Pass khi có kết quả thực thi; nếu quy ước nghiệp vụ đổi thì cập nhật cả thiết kế, fixture và kết quả mong đợi.

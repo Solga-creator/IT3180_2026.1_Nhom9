@@ -21,10 +21,10 @@ Không ghi password, token, chuỗi kết nối có secret hoặc CCCD thật. D
 
 | Phạm vi | Đã thực thi | Pass | Fail | Blocked | Chưa thực thi |
 |---|---:|---:|---:|---:|---:|
-| 45 ca chức năng FTC-S2 | 0 | 0 | 0 | 0 | 45 |
+| 43 ca chức năng FTC-S2 trong phạm vi | 0 | 0 | 0 | 0 | 43 |
 | E2E / OPS / PERF / UX | 0 | 0 | 0 | 0 | 4 |
 
-Đây là số **ca nghiệm thu trong kế hoạch**, không phải số unit test trong runner. Không báo tỷ lệ thành công khi chưa chạy. Test mới bổ sung ngoài 49 ca phải được ghi riêng, cập nhật cả test plan và tổng số trước khi tổng hợp.
+Đây là số **ca nghiệm thu trong kế hoạch**, không phải số unit test trong runner. Không báo tỷ lệ thành công khi chưa chạy. FTC-S2-27 và FTC-S2-30 nằm ngoài phạm vi, không tính vào 43 ca chức năng và 4 ca nghiệm thu (47 ca cần thực thi). Test mới bổ sung ngoài 47 ca phải được ghi riêng, cập nhật cả test plan và tổng số trước khi tổng hợp.
 
 ## 3. Kết quả từng ca
 
@@ -56,10 +56,10 @@ Không ghi password, token, chuỗi kết nối có secret hoặc CCCD thật. D
 | `FTC-S2-24` | Chưa thực thi | — | — |
 | `FTC-S2-25` | Chưa thực thi | — | — |
 | `FTC-S2-26` | Chưa thực thi | — | — |
-| `FTC-S2-27` | Chưa thực thi | — | — |
+| `FTC-S2-27` | Ngoài phạm vi v1.0 | DEC-02/03, chốt 28/11/2026 | Không tính vào tổng cần thực thi |
 | `FTC-S2-28` | Chưa thực thi | — | — |
 | `FTC-S2-29` | Chưa thực thi | — | — |
-| `FTC-S2-30` | Chưa thực thi | — | — |
+| `FTC-S2-30` | Ngoài phạm vi v1.0 | DEC-02/03, chốt 28/11/2026 | Không tính vào tổng cần thực thi |
 | `FTC-S2-31` | Chưa thực thi | — | — |
 | `FTC-S2-32` | Chưa thực thi | — | — |
 | `FTC-S2-33` | Chưa thực thi | — | — |
@@ -92,9 +92,9 @@ Giữ kết quả cũ và thêm Run ID mới khi chạy lại; không ghi đè F
 
 - [ ] Transaction/unique/khóa dòng: thu đồng thời, trùng key cùng/khác payload, replay sau commit/hủy.
 - [ ] Audit lỗi rollback thao tác; phát hành lỗi giữa batch không để kỳ nửa vời.
-- [ ] Migration chạy lại và tiếp tục sau lỗi; chuyển hộ giữ nợ/lịch sử/quyền đúng.
-- [ ] Backup/restore trên DB riêng: thời gian và đối chiếu dữ liệu/tổng tiền; ghi nhận kết quả thực tế.
-- [ ] Hiệu năng theo PERF-S2-01: cấu hình máy/mạng/DB, số mẫu, p95; chưa đo không ghi đạt mục tiêu.
+- [ ] Migration 6 bảng chạy lại và tiếp tục sau lỗi; đổi đại diện cùng hộ giữ snapshot, chặn xóa dữ liệu có chứng từ. Không nghiệm thu chuyển giao hộ/lịch sử diện tích.
+- [ ] Backup trước migration/nghiệm thu và restore ít nhất một lần trên DB riêng: thời gian và đối chiếu dữ liệu/tổng tiền; ghi nhận kết quả thực tế. Chưa yêu cầu backup tự động/RPO/RTO.
+- [ ] Hiệu năng DEC-10/PERF-S2-01: 100 căn/400 nhân khẩu/6 kỳ/1.000 khoản thu/3 phiên, >=100 request sau warm-up; p95 API <2s, sinh kỳ/Excel <10s; kiểm hai người cùng thu, ghi máy/mạng/DB; chưa đo không ghi đạt.
 - [ ] UI desktop/390px, bàn phím/focus/Escape, retry, in A4/A5, Excel cùng bộ lọc.
 - [ ] Hồi quy S1 được chạy lại theo code tích hợp; không lấy báo cáo baseline cũ làm kết quả mới.
 

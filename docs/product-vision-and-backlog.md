@@ -121,7 +121,7 @@ Nguồn quy tắc chi tiết: [Thiết kế Sprint 2, mục 3.5–3.11](./sprint
 4. Quỹ tự nguyện → lịch sử/báo cáo → in theo lô và hoàn thiện UX.
 5. E2E DB thật, kiểm thử đồng thời, backup/restore và hiệu năng; ghi kết quả trước khi đánh dấu Done.
 
-**Giới hạn đã chốt cho v1.0 (28/11/2026 — DEC-01/02/03/05):** Chỉ phát hành bảng thu cho kỳ hiện tại hoặc tương lai (**bỏ sinh bù kỳ cũ** và bảng lịch sử diện tích `apartment_area_versions`); không chia phí theo ngày; căn trống bỏ qua; **bỏ chuyển giao hộ A → B tách lịch sử & nợ** (giữ 1 hộ/căn của S1, chỉ đổi đại diện trong cùng hộ); **giữ hủy & phát hành thay thế hóa đơn sai** (`cancel/replace` + `revision`); không thu gộp nhiều hóa đơn trong một giao dịch; không làm cổng thanh toán, hoàn tiền tự động hoặc khóa sổ kế toán.
+**Giới hạn đã chốt cho v1.0 (28/11/2026 — DEC-01–DEC-11):** Chỉ phát hành bảng thu cho kỳ hiện tại hoặc tương lai (**bỏ sinh bù kỳ cũ** và bảng lịch sử diện tích `apartment_area_versions`); không chia phí theo ngày; căn trống bỏ qua; **bỏ chuyển giao hộ A → B tách lịch sử & nợ** (giữ 1 hộ/căn của S1, chỉ đổi đại diện trong cùng hộ); **giữ hủy & phát hành thay thế hóa đơn sai** (`cancel/replace` + `revision`); không thu gộp nhiều hóa đơn trong một giao dịch; không làm cổng thanh toán, hoàn tiền tự động hoặc khóa sổ kế toán.
 
 ## 4. Kiến trúc Phân tầng Client–Server & Design Patterns (Mục 10)
 
@@ -139,3 +139,6 @@ Dự án **không sử dụng Monolithic MVC truyền thống** mà tách hẳn 
 - **Singleton Pattern (Module-level Shared Instance — `backend/config/database.js`):** Khởi tạo duy nhất một đối tượng MySQL Connection Pool (`export const pool = mysql.createPool(...)`) ở cấp ES Module và tái sử dụng xuyên suốt toàn bộ ứng dụng, tránh tạo kết nối tràn lan.
 - **Repository Pattern (`backend/repositories/`):** Gồm 3 module chuyên biệt trong Sprint 1 (`userRepository.js`, `apartmentRepository.js`, `residentRepository.js`), che giấu chi tiết câu lệnh SQL và ánh xạ dòng dữ liệu snake_case của MySQL sang object camelCase cho tầng Service.
 - **Strategy / Observer (Định hướng Sprint 2):** Pattern Strategy phục vụ đa phương thức thu phí / tính biểu phí (`US-006`, `US-008`, `US-010`, `US-011`) thuộc phạm vi Sprint 2 (13/11 – 30/11).
+
+
+**Xác nhận bổ sung trong chat ngày 28/11/2026:** DEC-04/06/08/09/10/11 đã chốt: phân bổ DV trước QL, không thu vượt nợ; giữ 5 vai trò/audit atomic; quỹ OPEN trong hạn VN, đóng rồi không mở lại, vẫn được VOID có lý do; hợp đồng API/phân trang hiện có; bộ A demo 990.000 và bộ B test 810.000. Nghiệm thu gọn 100 căn/400 nhân khẩu/6 kỳ/1.000 khoản thu/3 phiên và >=100 request, p95 API <2s, sinh kỳ/Excel <10s; backup trước migration/nghiệm thu và restore một lần DB riêng. Chưa làm backup tự động/RPO/RTO. 43 FTC trong phạm vi + 2 FTC ngoài phạm vi + 4 ca nghiệm thu; chưa có kết quả thực thi. Lịch và ước lượng lại vẫn cần nhóm xác nhận.

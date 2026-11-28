@@ -4,22 +4,24 @@ Tài liệu này gom gọn cách triển khai **11 User Stories Sprint 2 (`US-00
 
 > **Tài liệu gốc đối chiếu khi code:**
 > - Mục lục theo vai trò: [README tài liệu](README.md); quy trình nhóm: [CONTRIBUTING](../CONTRIBUTING.md).
-> - JSON/query/mã lỗi đề xuất: [api-contract-s2.md](api-contract-s2.md); quyết định cần chốt: [sprint2-decisions.md](sprint2-decisions.md).
+> - JSON/query/mã lỗi đã chốt: [api-contract-s2.md](api-contract-s2.md); sổ quyết định đã chốt: [sprint2-decisions.md](sprint2-decisions.md).
 > - Dữ liệu thử dùng chung: [sprint2-test-data.md](sprint2-test-data.md); kết quả thực thi: [test-report-s2.md](test-report-s2.md) (hiện chưa chạy).
 > - Quy tắc tài chính, schema DB, ma trận quyền & API: [sprint2-technical-base.md](./sprint2-technical-base.md)
 > - Backlog, tiêu chí chấp nhận & giới hạn v1.0: [product-vision-and-backlog.md](./product-vision-and-backlog.md)
 > - Kế hoạch task `T00`–`T11` & chữ ký hàm đề xuất: [sprint2-implementation-plan.md](./sprint2-implementation-plan.md)
-> - Bộ 45 ca kiểm thử chức năng + E2E/OPS/PERF/UX: [test-plan-and-cases-s2.md](./test-plan-and-cases-s2.md)
+> - Bộ 43 ca chức năng trong phạm vi + 2 ca ngoài phạm vi + E2E/OPS/PERF/UX: [test-plan-and-cases-s2.md](./test-plan-and-cases-s2.md)
 > - Giao diện mẫu (8 board S1 + 34 board S2): Mở [design/bluemoon-ui-redesign/index.html](../design/bluemoon-ui-redesign/index.html) bằng trình duyệt.
 
 ---
 
 ## 1. Chuẩn bị Môi trường & Nguyên tắc Code Chung
 
+Quy ước đã chốt: phân bổ DV trước QL, không thu vượt nợ; giữ 5 vai trò và audit atomic; quỹ chỉ nhận mới khi OPEN trong khoảng ngày VN gồm hai đầu, đóng sớm được nhưng không mở lại, vẫn cho VOID có lý do sau đóng; API theo DEC-09; demo dùng bộ A và kiểm phân bổ dùng bộ B. Nghiệm thu DEC-10: 100 căn/400 nhân khẩu/6 kỳ/1.000 khoản thu/3 phiên, >=100 request sau warm-up; p95 API <2s, sinh kỳ/Excel <10s, kiểm hai người cùng thu. Backup trước migration/nghiệm thu và restore một lần vào DB riêng; chưa làm backup tự động/RPO/RTO.
+
 ### 1.0. Điều kiện trước khi bắt đầu
-- Sprint 2 hiện là thiết kế/kế hoạch, chưa phải chức năng đã triển khai. Nhóm cần xác nhận quy tắc v1.0: tính trọn tháng theo hộ/giá/diện tích đầu kỳ, bỏ qua căn trống đầu kỳ, không chia phí theo ngày và không chuyển nợ hộ cũ sang hộ mới. Đây là các đề xuất đồ án, chưa phải xác nhận nghiệp vụ của khách hàng.
+- Sprint 2 hiện là thiết kế/kế hoạch, chưa phải chức năng đã triển khai. DEC-01–DEC-11 đã được chốt trong sổ quyết định: tính trọn tháng theo hộ hiện hữu/diện tích hiện tại lúc phát hành và giá hiệu lực đầu kỳ, bỏ qua căn trống, không chia phí theo ngày; không sinh bù quá khứ/chuyển giao hộ. Xác nhận này là phạm vi đồ án, không phải bằng chứng đã triển khai.
 - Thực hiện T00 trong kế hoạch: smoke test Sprint 1 trên trình duyệt và DB thử riêng, lưu phiên bản code và kết quả chạy hồi quy làm baseline; đối chiếu [báo cáo S1](test-report-s1.md), phân biệt kết quả cũ với lần chạy mới, không tự đổi tổng số test thành kết quả PASS. Khi chốt baseline commit, đưa cả `frontend/tests/residentsRefresh.test.mjs` (hiện chưa được Git theo dõi) vào repo; chạy `node --test tests/*.test.mjs` từ frontend để các thành viên dùng cùng bộ test. Không đánh dấu T00 Done khi chưa có bằng chứng hoặc quyết định nghiệp vụ chưa được xác nhận.
-- Chốt mốc bắt đầu quản lý có đủ dữ liệu hộ, diện tích và giá để backfill migration. Không lấy `created_at` làm bằng chứng ngày chuyển đến, không tự gán lịch sử chưa xác minh; thiếu dữ liệu kỳ cũ phải chặn bằng `422`.
+- Không backfill lịch sử hộ/diện tích trong v1.0. Chặn phát hành kỳ quá khứ bằng 422; thiếu đơn giá hiệu lực đầu kỳ cũng trả 422. Dựng nhiều kỳ trong test bằng clock thử tiến lần lượt, không mở lại API sinh bù.
 
 ### 1.1. Tách Database thử nghiệm — Không chạm DB Cloud đang demo
 - Tạo database riêng trên MySQL local (hoặc schema thử riêng có hậu tố `_s2_test`, ví dụ `bluemoon_se09_s2_test`) để chạy migration và test DB thật (`TEST_DB_*`).
@@ -98,9 +100,9 @@ api/routes/*.js (requireAuth + requireRoles)
 
 ### Phần 3 — Xem trước, Phát hành & Hủy/Thay Hóa đơn Đầu kỳ (`US-008`)
 
-**1. Quy ước chọn hộ & diện tích đầu kỳ (`YYYY-MM-01`):**
-- Hộ chịu phí là hộ đang mở hiệu lực tại `YYYY-MM-01` (`starts_on <= 'YYYY-MM-01' AND (ends_on IS NULL OR ends_on > 'YYYY-MM-01')`). Hộ vào giữa tháng tính từ kỳ sau; căn trống đầu kỳ bỏ qua; hộ có người tạm trú/tạm vắng vẫn tính bình thường.
-- Diện tích lấy từ `apartment_area_versions` có `effective_from <= 'YYYY-MM-01'`. Thiếu dữ liệu lịch sử phải trả `422` liệt kê căn/phần thiếu — không suy diễn ngược từ hiện tại.
+**1. Quy ước chọn hộ/diện tích hiện tại và giá hiệu lực đầu kỳ:**
+- Hộ chịu phí là hộ hiện hữu của căn tại thời điểm phát hành kỳ hiện tại/tương lai; căn không có hộ/nhân khẩu đang cư trú thì bỏ qua. Tạm trú/tạm vắng không tự miễn phí. Giữ mô hình 1 hộ/căn, không thêm starts_on/ends_on hay chuyển giao hộ.
+- Diện tích lấy apartments.area hiện tại rồi ghi area_snapshot bất biến; giá lấy cấu hình hiệu lực tại đầu kỳ. Không tạo apartment_area_versions, không phát hành mới kỳ quá khứ (422).
 
 **2. Quy trình 2 bước Preview → Generate (`POST /api/billing-periods/preview` & `/generate` — chỉ `ADMIN`, `ACCOUNTANT`):**
 - **Bước Preview:** Tính danh sách căn đủ điều kiện, căn trống bỏ qua, đơn giá áp dụng, tổng phải thu; server ký `previewToken` (chứa `actorId`, `period`, `fingerprint` của dữ liệu nguồn và hạn 10 phút).
@@ -145,7 +147,7 @@ api/routes/*.js (requireAuth + requireRoles)
 - **Bảng thu & Công nợ (`GET /api/billing-periods/:period/bills`, `GET /api/apartments/:id/payments`):**
   - Chuẩn hóa bộ lọc dùng chung (`period`, `apartmentId`, `householdId`, `search`, `status`). Thẻ KPI (*Tổng phải thu*, *Tổng đã thu*, *Còn nợ*) tính bằng query tổng chạy trên **cùng bộ lọc** với bảng danh sách (không phụ thuộc phân trang).
   - Luôn loại hóa đơn `CANCELLED` và giao dịch `VOIDED` khỏi số tổng hợp, nhưng vẫn hiển thị trong bảng lịch sử kèm nhãn rõ ràng.
-  - Công nợ tách rõ: **nợ hộ hiện tại**, **nợ hộ cũ** (nếu căn từng chuyển giao hộ), **nợ kỳ này** và **nợ các kỳ trước**.
+  - Công nợ tách rõ: **nợ kỳ này**, **nợ các kỳ trước** và **tổng nợ lũy kế** của hộ gắn với căn; không tách nợ hộ cũ/mới trong v1.0.
 - **Giấy báo & Biên lai (`GET /api/bills/:billId/notice`, `GET /api/billing-periods/:period/notices?billIds=...`, `GET /api/payments/:paymentId/receipt`):**
   - Mọi chứng từ đọc 100% từ snapshot của `apartment_bills` / `fee_payments` (đổi giá hay đổi chủ hộ ở hiện tại không làm đổi chứng từ kỳ cũ).
   - Chứng từ của giao dịch `VOIDED` / hóa đơn `CANCELLED` bắt buộc hiển thị dấu **ĐÃ HỦY**; **In lại tuyệt đối không tạo giao dịch hay cộng tiền**.
@@ -165,7 +167,7 @@ api/routes/*.js (requireAuth + requireRoles)
 - **Cổng Cư dân (`GET /api/me/bills`, `GET /api/me/bills/:billId/receipts`, `GET /api/me/contributions`, `GET /api/me/contributions/:id/receipt`):**
   - JWT hiện chứa `sub`, role, username và tokenVersion, không chứa `resident_id`/`household_id`. Sau `requireAuth`, dùng `req.user.id` truy vấn DB theo `users.resident_id -> residents.household_id -> households`; kiểm tra lại liên kết và hiệu lực hiện tại trên mỗi request. Không lấy căn/hộ làm căn cứ cấp quyền từ body, query hay claim do client tự gửi; mọi ID chứng từ trên URL phải được đối chiếu với hộ được phép truy cập.
   - Dùng `resolveEffectiveResidencyStatus(...)` với ngày VN: nếu cư dân đã `"Chuyển đi"` hoặc hộ đã kết thúc $\to$ `403`.
-  - Chỉ trả về hóa đơn, biên lai và đóng góp của **hộ hiện tại** và kỳ hóa đơn $\ge$ tháng `joined_household_on` của cư dân đó.
+  - Chỉ trả về hóa đơn, biên lai và đóng góp của hộ gắn với cư dân đang hợp lệ; kiểm quyền từng chứng từ. Không thêm joined_household_on hoặc giới hạn lịch sử theo tháng gia nhập trong v1.0 (DEC-03/07).
 
 ---
 
@@ -183,5 +185,5 @@ api/routes/*.js (requireAuth + requireRoles)
 
 2. **Kiểm thử & Nghiệm thu bắt buộc trước khi đóng Sprint 2:**
    - Viết unit test mock theo TDD cho từng service + viết bộ test tích hợp DB thật (`backend/tests/db/` chạy với `TEST_DB_*` trỏ vào database `_s2_test`).
-   - Kiểm tra đồng thời thật (2 request cùng lúc thu 1 hóa đơn, 2 request cùng `idempotencyKey`), rollback khi audit lỗi, xem trước hết hạn (`409`), chuyển hộ A $\to$ B, print preview A4/A5, responsive `390px`, backup & restore trên DB thử và đo hiệu năng mẫu theo mục 3.11 của [sprint2-technical-base.md](./sprint2-technical-base.md).
+   - Kiểm tra đồng thời thật (2 request cùng lúc thu 1 hóa đơn, 2 request cùng `idempotencyKey`), rollback khi audit lỗi, xem trước hết hạn (`409`), đổi đại diện cùng hộ giữ snapshot, print preview A4/A5, responsive `390px`, backup & restore trên DB thử và đo hiệu năng mẫu theo mục 3.11 của [sprint2-technical-base.md](./sprint2-technical-base.md).
    - Bổ sung các ca biên theo hướng dẫn này: cùng key/cùng payload trả cùng giao dịch, cùng key/khác payload trả `409` kể cả gửi đồng thời; replay sau hủy không thu lại; hủy từ `PAID` về `PARTIAL`/`UNPAID`; token sai người/sai kỳ/sai hóa đơn/sai mục đích không phát hành; cư dân không lấy được chứng từ hộ khác. Áp dụng kiểm thử replay/concurrency tương tự cho quỹ tự nguyện.

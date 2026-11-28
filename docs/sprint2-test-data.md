@@ -2,7 +2,7 @@
 
 Cập nhật 28/11/2026. Đây là **đặc tả fixture đề xuất**, chưa có seed/script S2 được tạo hoặc chạy. Chỉ dùng tên giả và DB riêng có hậu tố `_s2_test`; không đưa dữ liệu cư dân thật vào log/ảnh.
 
-Nguồn: [quy tắc kỹ thuật](sprint2-technical-base.md), [API draft](api-contract-s2.md), [test plan](test-plan-and-cases-s2.md). Các giả định nghiệp vụ vẫn chờ chốt trong [decisions](sprint2-decisions.md).
+Nguồn: [quy tắc kỹ thuật](sprint2-technical-base.md), [API draft](api-contract-s2.md), [test plan](test-plan-and-cases-s2.md). Các quy tắc theo DEC-01–DEC-11 đã chốt trong [decisions](sprint2-decisions.md); fixture/seed vẫn chưa thực thi.
 
 ## 1. Cách dựng fixture
 
@@ -17,13 +17,13 @@ Nguồn: [quy tắc kỹ thuật](sprint2-technical-base.md), [API draft](api-co
 | Đối tượng | Dữ liệu giả lập |
 |---|---|
 | Căn APT-A | Số phòng chuỗi `050`, diện tích 90 m² |
-| Hộ HH-A | Hiệu lực từ 2026-10-01, chưa kết thúc; chủ hộ Người thử A |
-| Thành viên R-A | Gia nhập 2026-10-01, Thường trú; tài khoản RESIDENT liên kết hồ sơ |
+| Hộ HH-A | Hộ hiện hữu của APT-A trong mô hình 1 hộ/căn S1; chủ hộ Người thử A; không thêm starts_on/ends_on |
+| Thành viên R-A | Thường trú; tài khoản RESIDENT liên kết nhân khẩu/hộ HH-A |
 | Đơn giá | Hiệu lực 2026-10-01: DV 4.000 đ/m², QL 7.000 đ/m² |
-| Lịch sử diện tích | 90 m² từ 2026-10-01 |
-| Hai kỳ | 2026-10 và 2026-11; mỗi kỳ DV 360.000 + QL 630.000 = 990.000 đ |
+| Diện tích snapshot | 90 m² tại phát hành, giữ nguyên khi diện tích hiện tại thay đổi; không có bảng lịch sử diện tích |
+| Hai kỳ | BILL-OCT phát hành với clock thử tháng 10, BILL-NOV với clock tháng 11; mỗi kỳ DV 360.000 + QL 630.000 = 990.000 đ. Tại clock 28/11 không gọi API phát hành mới tháng 10 |
 | Tài khoản staff | ADMIN, BQT, ACCOUNTANT, TREASURER riêng biệt, mật khẩu test lấy từ cấu hình riêng |
-| Căn APT-EMPTY | `101`, có lịch sử diện tích nhưng không có hộ tại đầu kỳ |
+| Căn APT-EMPTY | `101`, không có hộ/nhân khẩu đang cư trú tại thời điểm phát hành |
 | Đợt quỹ CMP-A | OPEN, 2026-11-01 đến 2026-11-30; fundCode theo bộ mã T08 được chốt |
 
 Đơn giá và dữ liệu trên dùng cho nhánh kiểm thử hợp lệ. Chặn seed nếu chưa có mã fundCode đã chốt, không tự invent enum trong DB.
@@ -45,17 +45,17 @@ Nguồn: [quy tắc kỹ thuật](sprint2-technical-base.md), [API draft](api-co
 
 **Bộ B để kiểm ví dụ 810.000 đ:** dùng căn riêng 60 m², DV 6.000 đ/m² và QL 7.500 đ/m². Tổng DV 360.000 + QL 450.000 = 810.000; nộp 500.000 phân bổ 360.000/140.000, nợ 310.000. Cả hai đơn giá đều trong khung thiết kế.
 
-Ví dụ cũ tại kỹ thuật mục 3.1 dùng 90 m² × QL 5.000 đ/m² để ra 810.000 đ, mâu thuẫn mức QL tối thiểu 7.000. Không dùng cặp 90 m²/5.000 làm cấu hình hợp lệ. Nhóm cần chốt cách sửa ví dụ đó; các test đang dùng tổng 810.000 phải ghi rõ bộ B hoặc chỉ là unit fixture số dư, không giả là kết quả cấu hình giá hợp lệ của bộ A.
+Ví dụ cũ tại kỹ thuật mục 3.1 dùng 90 m² × QL 5.000 đ/m² để ra 810.000 đ, mâu thuẫn mức QL tối thiểu 7.000. Không dùng cặp 90 m²/5.000 làm cấu hình hợp lệ. DEC-11 đã chốt bộ A cho demo chính và bộ B cho test phân bổ; các test đang dùng tổng 810.000 phải ghi rõ bộ B hoặc chỉ là unit fixture số dư, không giả là kết quả cấu hình giá hợp lệ của bộ A.
 
 ## 4. Hộ, quyền và dữ liệu lịch sử
 
 | Mã fixture | Thiết lập/thao tác | Kết quả mong đợi |
 |---|---|---|
-| FX-11 | HH-A từ 01/10, chuyển sang HH-B ngày 20/11; clock thử 20/11 | Tháng 11 vẫn thuộc HH-A; tháng 12 thuộc HH-B nếu dữ liệu đầy đủ; nợ HH-A không chuyển sang HH-B |
-| FX-12 | Token R-A cũ sau chuyển hộ; R-B xem bill HH-A | Phiên A bị thu hồi/không còn quyền; B không lấy được chứng từ A; staff hợp lệ vẫn xem lịch sử |
-| FX-13 | Thành viên mới gia nhập HH-A ngày 15/11 | Không xem bill tháng 10; được xem kỳ tháng 11 theo quy ước tháng gia nhập nếu còn hiệu lực; kiểm cả endpoint receipt |
-| FX-14 | APT-EMPTY trống ngày 01/11; hộ mới bắt đầu 15/11 | Không bill tháng 11; kỳ 12 đủ dữ liệu mới sinh bill |
-| FX-15 | Thiếu diện tích trước kỳ hoặc thiếu mốc bắt đầu hộ đã xác nhận | Preview/generate 422, không dùng số hiện tại để lấp lịch sử |
+| FX-11 | Chuyển giao HH-A sang HH-B và tách nợ | Ngoài v1.0 (DEC-03); giữ ID để truy vết, không dựng fixture này |
+| FX-12 | R-A chuyển đi có hiệu lực; R-B thuộc hộ khác đoán ID bill/receipt HH-A | A bị chặn quyền đọc; B nhận 403/404; staff hợp lệ vẫn xem lịch sử |
+| FX-13 | Thành viên đang cư trú HH-A xem hóa đơn HH-A và thử chứng từ hộ khác | Được xem chứng từ của chính hộ, bị chặn hộ khác; không thêm giới hạn joined_household_on trong v1.0 (DEC-07) |
+| FX-14 | APT-EMPTY trống lúc preview/phát hành; sau đó thêm chủ hộ trong tháng | Lượt phát hành trước bỏ qua căn trống; hóa đơn đã phát hành giữ nguyên; không tự sinh bù hoặc thu theo ngày |
+| FX-15 | Thử phát hành kỳ quá khứ; thử kỳ hiện tại chưa có đơn giá hiệu lực | 422, không phát hành kỳ quá khứ và không tự điền giá; không cần lịch sử diện tích |
 | FX-16 | Preview rồi đổi đơn giá/hộ/diện tích; token hết hạn; dùng sai actor/kỳ/bill | Không phát hành theo preview cũ; lỗi theo API contract; không ghi nửa batch |
 | FX-17 | Hủy bill còn VALID payment; sau đó VOID đủ rồi replace | Lần đầu 409; thay hợp lệ tạo revision mới, old CANCELLED giữ snapshot, unique chỉ cho một ISSUED/căn/kỳ |
 
@@ -71,6 +71,10 @@ Ví dụ cũ tại kỹ thuật mục 3.1 dùng 90 m² × QL 5.000 đ/m² để 
 
 Khoảng UTC của tháng 11/2026 VN là `[2026-10-31T17:00:00Z, 2026-11-30T17:00:00Z)`. Timestamp cuối khoảng thuộc tháng 12 VN. Mọi số tiền/timestamp trên là đầu vào kỳ vọng, chưa phải kết quả chạy.
 
-## 6. Bằng chứng khi chạy
+## 6. Dữ liệu nghiệm thu DEC-10
+
+100 căn, 400 nhân khẩu, 6 kỳ, 1.000 khoản thu, 3 phiên; ít nhất 100 request sau warm-up. Dựng các kỳ với clock thử phù hợp, không cho phép API sinh bù kỳ quá khứ. Mục tiêu p95 API <2 giây, sinh kỳ/Excel <10 giây; lưu kết quả thật, kiểm hai người cùng thu một hóa đơn. Backup trước migration/nghiệm thu và restore một lần vào DB riêng; chưa làm backup tự động.
+
+## 7. Bằng chứng khi chạy
 
 Ghi FX-ID và FTC-ID liên quan, ID thật do fixture trả, snapshot trước/sau, HTTP response đã che token, số bản ghi và tổng tiền. Tách test mock với test DB thật. Dùng [báo cáo S2](test-report-s2.md) để lưu kết quả; không đổi Planned thành Pass chỉ vì fixture đã viết.

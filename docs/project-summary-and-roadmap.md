@@ -12,7 +12,7 @@ BlueMoon có nền client–server và quản lý căn/hộ/nhân khẩu tương
 | Sửa lỗi xuất Excel/ngày/lọc căn | Đã sửa trong code và thêm test; đã dùng thử lại ngày và xuất theo trạng thái | Theo dõi trong hồi quy S1 khi tích hợp S2 |
 | Sprint 2 — 11 US | Có backlog, thiết kế kỹ thuật, hợp đồng API, UI và test plan; routes hiện chưa có phân hệ tài chính | Triển khai theo kế hoạch, kiểm chứng DB thật và tiêu chí Done |
 | Giao diện mới | Có 9 board ban đầu + 34 board Sprint 2 = 43 board SVG, gallery có luồng bấm mẫu, gói nhập Figma | Chưa áp dụng vào frontend; Figma hết quota MCP nên chưa có bộ component/Auto Layout/prototype native |
-| Kiểm thử S2 | Có 45 ca chức năng dự kiến + E2E/OPS/PERF/UX | Chưa phải 45 test tự động hay kết quả Pass; cần triển khai và thực thi |
+| Kiểm thử S2 | Có 43 ca chức năng trong phạm vi, 2 ca ngoài phạm vi + E2E/OPS/PERF/UX | Chưa phải số test tự động hay kết quả Pass; cần triển khai và thực thi |
 
 Điểm tham khảo từng nhận xét cho S1 là **7–8/10**, không phải điểm chính thức hay kết quả chấm của HUST. Những lời khen/nhận xét dựa trên phạm vi đã đọc và dùng thử, không đại diện một cuộc kiểm toán toàn bộ hệ thống.
 
@@ -53,7 +53,7 @@ Ngoài v1.0: xe/điện nước/Internet (`US-020`, `US-021`), cổng thanh toá
 - Đã sửa lọc `GET /api/residents?status=...` theo trạng thái hiệu lực ngày VN (`BUG-S1-06`), đồng nhất điều kiện ứng viên/đăng ký/cấp/duyệt/đăng nhập/xem hộ & thu hồi `token_version` khi ghi bù `"Chuyển đi"` (`BUG-S1-07`), khóa dòng `FOR UPDATE` trong transaction khi xóa căn hộ trống (`BUG-S1-08`), và đồng bộ vòng đời bộ lọc/reload/modal/khóa form thêm cư dân trên `ResidentsPage.jsx` + `ResidentForms.jsx` (`BUG-S1-09`).
 - Toàn bộ suite tự động: **70/70 PASS** (`0 fail`, `0 skip`: `56` backend `npm test` + `8` backend `npm run test:e2e` + `6` frontend `node --test tests/*.test.mjs` gồm file untracked `residentsRefresh.test.mjs`). `npm run lint` (`oxlint`): **0 warnings, 0 errors**.
 - `npm run build` mặc định vẫn gặp lỗi quyền `EPERM` tại `frontend/dist/assets`; `npm run build -- --outDir node_modules/.cache/s1-final-review-verify` **PASS** (37 modules, 118ms).
-- **Chưa xác minh trong lần chạy này:** kiểm thử trực tiếp trên MySQL thật (bao gồm lịch khóa 2 connection thật) và kiểm tra thủ công giao diện trên trình duyệt (desktop / `390px`). Toàn bộ điều kiện còn lại của T00 (DB thử riêng, chốt baseline commit, chốt quy ước `DEC-01`..`DEC-11` và ước lượng lại Sprint 2) vẫn đang mở.
+- **Chưa xác minh trong lần chạy này:** kiểm thử trực tiếp trên MySQL thật (bao gồm lịch khóa 2 connection thật) và kiểm tra thủ công giao diện trên trình duyệt (desktop / `390px`). Toàn bộ điều kiện còn lại của T00 (DB thử riêng, chốt baseline commit và ước lượng lại Sprint 2) vẫn đang mở.
 
 ## 4. Những quyết định đã bổ sung cho Sprint 2
 
@@ -100,7 +100,7 @@ Giao diện chung có thể làm từ D2, nhưng tính năng chỉ bật khi API
 
 - [ ] Chạy lại đầy đủ kiểm thử S1, nghiệm thu từng AC và cập nhật báo cáo thật.
 - [ ] Hoàn thành 11 US S2 theo tiêu chí gốc và phần bổ sung, không còn lỗi nghiêm trọng về tiền/phân quyền.
-- [ ] Đối chiếu kết quả 45 ca chức năng dự kiến và E2E/OPS/PERF/UX; không chuyển Planned sang Pass chỉ vì đã viết tài liệu.
+- [ ] Đối chiếu kết quả 43 ca chức năng trong phạm vi và E2E/OPS/PERF/UX (FTC-S2-27/30 ngoài phạm vi); không chuyển Planned sang Pass chỉ vì đã viết tài liệu.
 - [ ] DB thật chứng minh chống thu trùng, rollback và quyền qua các hộ; không chỉ mock.
 - [ ] Bảng/totals/Excel khớp; chứng từ cũ bất biến, in lại không thu lại, hủy có dấu và audit.
 - [ ] Restore vào DB thử thành công; có số đo hiệu năng đúng điều kiện spec và kiểm tra desktop/390px.
@@ -122,3 +122,6 @@ Giao diện chung có thể làm từ D2, nhưng tính năng chỉ bật khi API
 | Xem các board mới / nhập Figma | [Bộ giao diện mới](../design/bluemoon-ui-redesign/README.md) |
 
 Khi có thay đổi phạm vi, sửa nguồn quy tắc trước, cập nhật kế hoạch/test/UI và trạng thái trong bản tổng hợp này. Không dùng bản tóm tắt để ghi đè hợp đồng API hoặc kết quả thực thi.
+
+
+**Quyết định S2 ngày 28/11/2026:** DEC-01–DEC-11 đã chốt theo [sổ quyết định](sprint2-decisions.md), gồm xác nhận sáu đề xuất cuối trong chat. Mục tiêu nghiệm thu DEC-10 được giảm còn 100 căn/400 nhân khẩu/6 kỳ/1.000 khoản thu/3 phiên; không làm backup tự động hay cam kết RPO/RTO trong v1.0. Điều này không đồng nghĩa S2/T00 đã hoàn tất hoặc mục tiêu hiệu năng đã đạt.
